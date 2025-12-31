@@ -11,7 +11,10 @@ li{
 
 @font-face {
     font-family: '信笺手写体';
-    src:  url('../assets/font/信笺手写体.woff') format('truetype');
+    src: url('../assets/font/信笺手写体.eot'); /* IE9 Compat Modes */
+    src: url('../assets/font/信笺手写体.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+         url('../assets/font/信笺手写体.woff') format('woff'), /* Modern Browsers */
+         url('../assets/font/信笺手写体.ttf')  format('truetype'); /* Safari, Android, iOS */
 }
 /*
  * url('../assets/font/信笺手写体.eot') format('embedded-opentype'),
@@ -20,6 +23,9 @@ li{
 @bbr: 6px;
 @br: 4px;
 @image: '/assets/image';
+
+@primary: #19be6b;
+@secondary: #57a3f3;
 
 @poem: "信笺手写体", "楷体", "微软雅黑";
 

@@ -1,38 +1,18 @@
-// The Vue build version to load with the `import` command
-// (runtime-only or standalone) has been set in webpack.base.conf with an alias.
-import Vue from 'vue'
-import App from './App'
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import Antd from 'ant-design-vue'
+import App from './App.vue'
 import router from './router'
-import store from './store'
-import iView from 'iview';
-import 'whatwg-fetch' //兼容IE fetch
+
+import 'ant-design-vue/dist/reset.css'
+import 'animate.css'
 import '@/config/base.less'
-import '@/config/animate.css'
 
-import 'mavon-editor/dist/css/index.css'
-import 'muse-ui/lib/styles/base.less';
-import 'muse-ui/lib/styles/theme.less';
-import { TextField, Button } from 'muse-ui';
-import theme from 'muse-ui/lib/theme';
-import 'iview/dist/styles/iview.css'
+const app = createApp(App)
 
-theme.add('teal', {
-  secondary: '#57a3f3'
-}, 'light');
-theme.use('teal');
+app.use(createPinia())
+app.use(router)
+app.use(Antd)
 
+app.mount('#app')
 
-Vue.use(TextField);
-Vue.use(Button);
-Vue.use(iView)
-Vue.config.productionTip = false
-
-
-/* eslint-disable no-new */
-new Vue({
-  el: '#app',
-  store,
-  router,
-  components: { App },
-  template: '<App/>'
-})

@@ -1,139 +1,72 @@
+import axios from 'axios'
 import router from '@/router'
-import store from '@/store'
-import {message} from '@/utils/talk'
+import { useUserStore } from '@/store/user'
+import { message } from '@/utils/talk'
 
+const service = axios.create({
+  timeout: 10000,
+  withCredentials: true
+})
 
-export const json = (response) => response.json();
-export const jsonay = (response) => response.json();
+// 请求拦截器
+service.interceptors.request.use(
+  config => {
+    const userStore = useUserStore()
+    if (userStore.token) {
+      // 兼容旧项目的逻辑：将 token 放在 body 的 datas 中，或者 header
+      // 这里根据旧项目的 net.js 逻辑，它是放在 body 里的
+      if (config.method === 'post' && config.data) {
+        config.data = {
+          token: userStore.token,
+          datas: config.data
+        }
+      }
+    }
+    return config
+  },
+  error => {
+    return Promise.reject(error)
+  }
+)
 
+// 响应拦截器
+service.interceptors.response.use(
+  response => {
+    const res = response.data
+    // 兼容旧项目的 resultAny 逻辑
+    if (res.code === 200) {
+      if (res.result && Object.getOwnPropertyNames(res.result).length === 1 && res.result.list && Array.isArray(res.result.list)) {
+        return res.result.list
+      }
+      return { msg: res.message, ...res.result }
+    } else if (res.code === 101) {
+      message(res.message, 4)
+      const userStore = useUserStore()
+      userStore.logout()
+      router.push('/login')
+      return Promise.reject(new Error(res.message || 'Error'))
+    } else {
+      if (res.message) {
+        message(res.message, 4)
+      }
+      return Promise.reject(new Error(res.message || 'Error'))
+    }
+  },
+  error => {
+    message(error.message, 4)
+    return Promise.reject(error)
+  }
+)
 
-export const status = (response) => {
-	if (response.status >= 200 && response.status < 300) {
-	    	return response
-	  }
-	throw new Error(response.statusText)
-} 
-/*
- * 不需要登陆即可请求的接口
- */
-export const analy = (response) => Promise.resolve(response).then(status).then(json).then(resultAny)
-
-
-/*
- * 解析返回code,纯数组或对象
- */
-export const resultAny = (datas) => {
-	
-	if (datas.code === 200) {
-		if (Object.getOwnPropertyNames(datas.result).length === 1 && datas.result.list && Array.isArray(datas.result.list)) { 
-			//返回数据里面仅有一个属性，属性名为list，且对应值类型为Array时返回该list
-			return datas.result.list
-		} else {
-			return Object.assign({}, {msg: datas.message}, datas.result )
-		}
-		
-	} else if (datas.code === 101) {
-    message(datas.message, 4)
-    router.push('/login');
-  } else{
-		if (datas.message) {
-			message(datas.message, 4)
-		}
-		return undefined
-	}
-}
-
-/*
- * 根据接口需要判断是否登陆状态
- */
-export const onanaly = (response) => Promise.resolve(response).then(status).then(json).then(
-	(dp) => {
-		if (!dp.status) {
-			router.push('/');
-			return null;
-		} else{
-			return dp;
-		}
-	}
-).then(resultAny);
-/*
- * 解析JSON，判断是否登陆状态
- */
-export const analyJson = (dp) => {
-	if (!dp.status) {
-		store.state.token = '',
-		store.state.user = {},
-		router.push('/login');
-		return null;
-	} else{
-		return dp.result;
-	}
-}
-
+export default service
 
 /**
- * post method  带token
- * Requests  params, returning a common request config.
- *
- * @param  {object} params  the method wangt to post
- * 
- */
-export const postModelOnline = ( params ) => {
-	return {
-		method: 'post',
-		credentials: 'include',
-		headers: {
-		    'Accept': 'application/json',
-		    'Content-Type': 'application/json'
-		},
-		body: JSON.stringify( 
-			Object.assign( {}, { token: store.state.token }, {datas: params})
-		)
-	}
-}
-
-/**
- * post method  不带token
- * Requests  params, returning a common request config.
- *
- * @param  {object} params  the method wangt to post
- * 
- */
-export const postModel = ( params ) => {
-	return {
-		method: 'post',
-		credentials: 'include',
-		headers: {
-		    'Accept': 'application/json',
-		    'Content-Type': 'application/json'
-		},
-		body: JSON.stringify( 
-			Object.assign(params)
-		)
-	}
-}
-
-/*
- * get method 不带token
- */
-export const getModel = () =>{
-	return{
-		method: 'get',
-		credentials: 'include',
-		headers: {
-		    'Accept': 'application/json',
-		    'Content-Type': 'application/json'
-		}
-	}
-}
-
-
-/*
- * restful url 拼接
+ * 兼容旧项目的 restful 拼接
  */
 export const restful = (url, obj) => {
-	Object.keys(obj).forEach(function (key) {
-	    url = url.replace(new RegExp('{'+key+'}', 'g'), obj[key]);
-	});
-	return url;
+  Object.keys(obj).forEach(function (key) {
+    url = url.replace(new RegExp('{' + key + '}', 'g'), obj[key])
+  })
+  return url
 }
+
