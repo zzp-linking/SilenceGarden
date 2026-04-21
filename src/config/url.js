@@ -18,4 +18,4 @@ export const GET_POETRY_CATALOG_VAGUE = BASEURL + '/poetry_catalog/vague/{keywor
 
 export const GET_MELODY_CATALOG = BASEURL + '/violin_catalog' //获取音频目录
 export const GET_MELODY = BASEURL + '/melody/{id}'  	//	获取音频信息
-export const GET_MELODY_RANDOM = BASEURL + '/melody/ramdom/{id}'    //随机播放
+export const GET_MELODY_RANDOM = BASEURL + '/melody/random/{id}'    //随机播放
