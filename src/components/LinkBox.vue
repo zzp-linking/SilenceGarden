@@ -62,7 +62,7 @@ const srcJoin = (src) => {
 .box-image {
   width: 90px;
   height: 90px;
-  background-image: url('/assets/image/violin/catalog-disk-bg.png');
+  background-image: url('/home/assets/image/violin/catalog-disk-bg.png');
   background-size: 170% 170%;
   background-position: center;
   overflow: hidden;

@@ -1,7 +1,10 @@
-export const BASEURL = '/api'  //服务器地址
+export const PUBLIC_PATH = '/home'
+
+export const BASEURL = PUBLIC_PATH + '/api'  //服务器地址
 export const AUTH = '/auth'     //需要登录验证的接口
 
-export const IMG = '/assets/image' //图片地址
+export const IMG = PUBLIC_PATH + '/assets/image' //图片地址
+export const AUDIO = PUBLIC_PATH + '/assets/audio' //音频地址
 
 export const LOGIN = BASEURL + '/login' //登录
 

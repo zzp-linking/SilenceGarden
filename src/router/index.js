@@ -61,8 +61,19 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
-  routes
+  history: createWebHistory('/home/'),
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    // 诗词目录由页面自身在数据渲染完成后恢复滚动位置。
+    if (to.name === 'Poetry') {
+      return false
+    }
+    // 页面跳转时回到顶部；浏览器后退时恢复用户离开前的位置。
+    if (savedPosition) {
+      return savedPosition
+    }
+    return { top: 0, left: 0 }
+  }
 })
 
 router.beforeEach((to, from, next) => {

@@ -50,6 +50,7 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useArticleStore } from '@/store/article'
+import { IMG } from '@/config/url'
 import { UserOutlined } from '@ant-design/icons-vue'
 import { mavonEditor } from 'mavon-editor'
 import 'mavon-editor/dist/css/index.css'
@@ -81,7 +82,7 @@ const revise_article = computed(() => articleStore.revise_article)
 watch(upload_image, (val) => {
   if (val) {
     const pos = articleStore.pos
-    md.value.$img2Url(pos, '/assets/image/article/upload/' + val)
+    md.value.$img2Url(pos, `${IMG}/article/upload/` + val)
   }
 })
 

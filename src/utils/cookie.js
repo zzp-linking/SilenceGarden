@@ -28,16 +28,16 @@ export const CookieUtils = {
 		exp.setTime(exp.getTime() - 1);
 		var cval= this.get(name);
 		if(cval != null)
-		document.cookie= name + "="+cval+";expires="+exp.toGMTString();
+		document.cookie= name + "="+cval+";expires="+exp.toGMTString()+";path=/home"
 	},
 	set: function (name, value, time) {
 		if (time) {
 			var strsec = getsec(time);
 			var exp = new Date();
 			exp.setTime(exp.getTime() + strsec*1);
-			document.cookie = name + "="+ escape(value) + ";expires=" + exp.toGMTString();
+			document.cookie = name + "="+ escape(value) + ";expires=" + exp.toGMTString() + ";path=/home";
 		} else{
-			document.cookie= name + "=" + escape(value)
+			document.cookie= name + "=" + escape(value) + ";path=/home"
 		}
 		
 	}

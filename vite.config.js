@@ -1,10 +1,23 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
+import fs from 'fs'
 
-// https://vitejs.dev/config/
+// 产物放到 dist/home/，与线上 URL /home/ 对齐，避免 nginx 把 JS 回退成 index.html
+function copyIndexToDistRoot() {
+  return {
+    name: 'copy-index-to-dist-root',
+    closeBundle() {
+      const src = path.resolve(__dirname, 'dist/home/index.html')
+      const dest = path.resolve(__dirname, 'dist/index.html')
+      if (fs.existsSync(src)) fs.copyFileSync(src, dest)
+    }
+  }
+}
+
 export default defineConfig({
-  plugins: [vue()],
+  base: '/home/',
+  plugins: [vue(), copyIndexToDistRoot()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -20,14 +33,21 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': {
-        target: 'http://localhost:4000', // 请根据实际后端地址修改
+      '/home/api': {
+        target: 'http://localhost:4000',
         changeOrigin: true,
-      }
+        rewrite: (path) => path.replace(/^\/home/, ''),
+      },
+      '/home/assets': {
+        target: 'https://silencegarden.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/home/, ''),
+      },
     }
   },
   build: {
-    assetsDir: 'static', // 将打包后的 JS/CSS/图片等资源放入 static 目录，避免与 Nginx 的 assets 冲突
+    outDir: 'dist/home',
+    assetsDir: 'static',
+    emptyOutDir: true,
   }
 })
-

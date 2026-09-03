@@ -7,6 +7,7 @@ import router from './router'
 import 'ant-design-vue/dist/reset.css'
 import 'animate.css'
 import '@/config/base.less'
+import '@/config/garden.less'
 
 const app = createApp(App)
 

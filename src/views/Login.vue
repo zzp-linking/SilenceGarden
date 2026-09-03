@@ -74,7 +74,7 @@ const handleSubmit = () => {
 .login-wrap {
   width: 100vw;
   height: 100vh;
-  background: url(/assets/image/common/login-bg.jpg) center no-repeat;
+  background: url(/home/assets/image/common/login-bg.jpg) center no-repeat;
   background-size: cover;
   display: flex;
   align-items: center;

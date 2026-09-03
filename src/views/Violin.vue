@@ -94,7 +94,7 @@ import { useRoute, onBeforeRouteUpdate } from 'vue-router'
 import { useViolinStore } from '@/store/violin'
 import { isPc } from '@/utils/tool'
 import { message } from '@/utils/talk'
-import { IMG } from '@/config/url'
+import { IMG, AUDIO } from '@/config/url'
 import {
   AppstoreOutlined,
   SyncOutlined,
@@ -130,7 +130,7 @@ const aud = computed(() => {
   const store_src = violinStore.melody.src
   const src = store_src || current_src.value
   if (store_src) current_src.value = store_src
-  return `/assets/audio/${src}`
+  return `${AUDIO}/${src}`
 })
 
 const discImg = computed(() => {
@@ -335,7 +335,7 @@ const changeMusic = (id, type) => {
   .disc-bg {
     width: 100%;
     height: 100%;
-    background-image: url(/assets/image/violin/disk.png);
+    background-image: url(/home/assets/image/violin/disk.png);
     background-size: cover;
     position: absolute;
     top: 0;
@@ -357,7 +357,7 @@ const changeMusic = (id, type) => {
     width: 100%;
     height: 100%;
     opacity: 0;
-    background-image: url(/assets/image/violin/disk-light.png);
+    background-image: url(/home/assets/image/violin/disk-light.png);
     background-size: cover;
     transition: opacity 0.8s;
     &.disk-light-show {
@@ -371,7 +371,7 @@ const changeMusic = (id, type) => {
     height: 527px;
     right: -107px;
     top: -94px;
-    background-image: url(/assets/image/violin/disk-controllerArm.png);
+    background-image: url(/home/assets/image/violin/disk-controllerArm.png);
     background-size: cover;
     transform-origin: 83.78% 11.2%;
     transition: transform 0.5s;
