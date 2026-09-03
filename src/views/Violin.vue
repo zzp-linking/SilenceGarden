@@ -88,13 +88,14 @@
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
+<script setup lang="ts">
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, onBeforeRouteUpdate } from 'vue-router'
 import { useViolinStore } from '@/store/violin'
 import { isPc } from '@/utils/tool'
 import { message } from '@/utils/talk'
 import { IMG, AUDIO } from '@/config/url'
+import router from '@/router'
 import {
   AppstoreOutlined,
   SyncOutlined,
@@ -109,13 +110,13 @@ import {
 
 const route = useRoute()
 const violinStore = useViolinStore()
-const music = ref(null)
+const music = ref<HTMLAudioElement | null>(null)
 
 const paused = ref(true)
 const during = ref(0)
 const current = ref(0)
 const volume = ref(1)
-const clock = ref(null)
+const clock = ref<ReturnType<typeof setInterval> | null>(null)
 const max = ref(0)
 const model = ref('') // single, random
 
@@ -165,7 +166,9 @@ const controllerRotate = computed(() => {
 
 onMounted(() => {
   violinStore.violinInint()
-  violinStore.getViolinInfo({ id: route.params.id })
+  const idParam = route.params.id
+  const id = Array.isArray(idParam) ? idParam[0] : idParam
+  if (id) void violinStore.getViolinInfo({ id })
   
   if (music.value) {
     music.value.addEventListener('loadedmetadata', () => {
@@ -174,23 +177,25 @@ onMounted(() => {
   }
 })
 
-onBeforeRouteUpdate((to, nextRoute) => {
-  const id = to.params.id || 1
-  violinStore.getViolinInfo({ id })
-  nextRoute()
+onBeforeRouteUpdate(to => {
+  const idParam = to.params.id
+  const id = Array.isArray(idParam) ? idParam[0] : idParam
+  if (id) void violinStore.getViolinInfo({ id })
 })
 
 onUnmounted(() => {
   stopClock()
 })
 
-const initPlayer = () => {
+const initPlayer = (): void => {
+  if (!music.value) return
   max.value = music.value.duration
   during.value = music.value.duration
   paused.value = music.value.paused
 }
 
-const startPlay = () => {
+const startPlay = (): void => {
+  if (!music.value) return
   pointer.init_value = music.value.currentTime
   paused.value = false
   startClock()
@@ -199,73 +204,79 @@ const startPlay = () => {
   }, 800)
 }
 
-const pauseListener = () => {
+const pauseListener = (): void => {
   pointer.flag = false
   paused.value = true
 }
 
-const playEnded = () => {
+const playEnded = (): void => {
+  if (!music.value) return
   if (model.value === 'single') {
-    music.value.play()
+    void music.value.play()
   } else if (model.value === 'random') {
     stopClock()
     paused.value = true
-    violinStore.getRamdonViolinInfo({ id: route.params.id })
+    const idParam = route.params.id
+    const id = Array.isArray(idParam) ? idParam[0] : idParam
+    if (id) void violinStore.getRamdonViolinInfo({ id })
   } else {
     stopClock()
     paused.value = true
   }
 }
 
-const playPause = () => {
+const playPause = (): void => {
+  if (!music.value) return
   if (music.value.paused) {
-    music.value.play()
+    void music.value.play()
   } else {
     music.value.pause()
   }
   paused.value = music.value.paused
 }
 
-const startClock = () => {
+const startClock = (): void => {
+  if (!music.value) return
   stopClock()
   clock.value = setInterval(() => {
-    current.value = music.value.currentTime
+    current.value = music.value?.currentTime || 0
   }, 30)
 }
 
-const stopClock = () => {
+const stopClock = (): void => {
   if (clock.value) clearInterval(clock.value)
+  clock.value = null
 }
 
-const awakenClock = () => {
+const awakenClock = (): void => {
   stopClock()
   startClock()
 }
 
-const currentSet = (val) => {
-  music.value.currentTime = val
+const currentSet = (val: number | string): void => {
+  if (!music.value) return
+  music.value.currentTime = Number(val)
   startClock()
 }
 
-const volumnSet = (val) => {
-  volume.value = val
-  if (music.value) music.value.volume = val
+const volumnSet = (val: number | string): void => {
+  const nextVolume = Number(val)
+  volume.value = nextVolume
+  if (music.value) music.value.volume = nextVolume
 }
 
-const playTimeFormat = (value) => {
+const playTimeFormat = (value?: number): string => {
   if (!value) return '00 : 00'
-  let minu = Math.floor(value / 60)
-  minu = minu < 10 ? '0' + minu : minu
-  let sec = Math.floor(value % 60)
-  sec = sec < 10 ? '0' + sec : sec
-  return `${minu} : ${sec}`
+  const minutes = String(Math.floor(value / 60)).padStart(2, '0')
+  const seconds = String(Math.floor(value % 60)).padStart(2, '0')
+  return `${minutes} : ${seconds}`
 }
 
-const playModelChange = (val) => {
+const playModelChange = (val: 'single' | 'random'): void => {
   model.value = model.value === val ? '' : val
 }
 
-const changeMusic = (id, type) => {
+const changeMusic = (id: string, type: 'last' | 'next'): void => {
   if (!id) {
     message(type === 'last' ? '前面什么也没有┐(´∀｀)┌！' : '已经是最后一首啦ヽ(`Д´)ﾉ！', 4)
   } else {

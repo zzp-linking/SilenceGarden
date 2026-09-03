@@ -70,7 +70,7 @@
   </main>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useViolinStore } from '@/store/violin'
 import { IMG } from '@/config/url'
@@ -78,7 +78,7 @@ import { IMG } from '@/config/url'
 const violinStore = useViolinStore()
 const catalog = computed(() => violinStore.catalog)
 
-const srcJoin = (src) => `${IMG}/violin/${src}`
+const srcJoin = (src: string): string => `${IMG}/violin/${src}`
 
 onMounted(() => {
   violinStore.getVillinCatalog()

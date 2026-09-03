@@ -67,7 +67,7 @@
   </main>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useArticleStore } from '@/store/article'
@@ -76,6 +76,7 @@ import Loading from '@/components/Loading.vue'
 import { ArrowUpOutlined } from '@ant-design/icons-vue'
 import 'github-markdown-css/github-markdown.css'
 import 'highlight.js/styles/github.css'
+import type { IdParams } from '@/types/api'
 
 const route = useRoute()
 const articleStore = useArticleStore()
@@ -102,9 +103,11 @@ const scrollToTop = () => {
 }
 
 onMounted(() => {
-  const id = route.params.id
+  const idParam = route.params.id
+  const id = Array.isArray(idParam) ? idParam[0] : idParam
   if (id) {
-    articleStore.getArticleDetails({ id })
+    const params: IdParams = { id }
+    articleStore.getArticleDetails(params)
   }
 
   handleScroll()
@@ -115,9 +118,10 @@ onBeforeUnmount(() => {
   window.removeEventListener('scroll', handleScroll)
 })
 
-const contentClick = (event) => {
-  if (isPc() && event.target.nodeName === 'IMG') {
-    modalImg.value = event.target.getAttribute('src')
+const contentClick = (event: MouseEvent): void => {
+  const target = event.target
+  if (isPc() && target instanceof HTMLImageElement) {
+    modalImg.value = target.getAttribute('src') || ''
     modalImgOpen.value = true
   }
 }

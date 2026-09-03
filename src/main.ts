@@ -9,11 +9,8 @@ import 'animate.css'
 import '@/config/base.less'
 import '@/config/garden.less'
 
-const app = createApp(App)
-
-app.use(createPinia())
-app.use(router)
-app.use(Antd)
-
-app.mount('#app')
-
+createApp(App)
+  .use(createPinia())
+  .use(router)
+  .use(Antd)
+  .mount('#app')

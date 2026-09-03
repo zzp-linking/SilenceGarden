@@ -17,17 +17,13 @@
   </router-link>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { IMG } from '@/config/url'
+import type { MusicCatalogItem } from '@/types/music'
 
-defineProps({
-  violin: {
-    type: Object,
-    required: true
-  }
-})
+defineProps<{ violin: MusicCatalogItem }>()
 
-const srcJoin = (src) => {
+const srcJoin = (src: string): string => {
   return `${IMG}/violin/${src}`
 }
 </script>

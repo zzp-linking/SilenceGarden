@@ -69,7 +69,7 @@
   </main>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, nextTick } from 'vue'
 import { usePoetryStore } from '@/store/poetry'
 
@@ -79,14 +79,14 @@ const poetryScrollKey = 'silence-garden:poetry-scroll-top'
 const catalog = computed(() => poetryStore.catalog)
 const keyword = computed({
   get: () => poetryStore.keyword,
-  set: (value) => poetryStore.setKeyword(value)
+  set: (value: string) => poetryStore.setKeyword(value)
 })
 
-const indistinctSearch = () => {
+const indistinctSearch = async (): Promise<void> => {
   if (keyword.value) {
-    return poetryStore.getPoetryCatalogByKeyword({ keyword: keyword.value })
+    await poetryStore.getPoetryCatalogByKeyword({ keyword: keyword.value })
   } else {
-    return poetryStore.getPoetryCatalog()
+    await poetryStore.getPoetryCatalog()
   }
 }
 

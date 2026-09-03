@@ -7,7 +7,7 @@
   </a-config-provider>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import zhCN from 'ant-design-vue/es/locale/zh_CN';
 import Loading from '@/components/Loading.vue';
 import { useGlobalStore } from '@/store/global';

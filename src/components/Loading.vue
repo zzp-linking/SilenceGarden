@@ -8,13 +8,8 @@
   </div>
 </template>
 
-<script setup>
-defineProps({
-  loading: {
-    type: Boolean,
-    default: false
-  }
-})
+<script setup lang="ts">
+withDefaults(defineProps<{ loading?: boolean }>(), { loading: false })
 </script>
 
 <style scoped lang="less">

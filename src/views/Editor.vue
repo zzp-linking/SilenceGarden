@@ -46,7 +46,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useArticleStore } from '@/store/article'
@@ -54,20 +54,23 @@ import { IMG } from '@/config/url'
 import { UserOutlined } from '@ant-design/icons-vue'
 import { mavonEditor } from 'mavon-editor'
 import 'mavon-editor/dist/css/index.css'
+import type { FormInstance } from 'ant-design-vue'
+import type { MavonEditorInstance } from 'mavon-editor'
+import type { ArticleEditDetail } from '@/types/article'
 
 const route = useRoute()
 const articleStore = useArticleStore()
 
-const formRef = ref(null)
-const md = ref(null)
+const formRef = ref<FormInstance>()
+const md = ref<MavonEditorInstance | null>(null)
 
-const markdown = reactive({
+const markdown = reactive<{ value: string; html: string }>({
   value: '',
   html: ''
 })
 
-const tags = ref([])
-const form = reactive({
+const tags = ref<string[]>([])
+const form = reactive<{ title: string; tag: string }>({
   title: '',
   tag: ''
 })
@@ -79,14 +82,14 @@ const rules = {
 const upload_image = computed(() => articleStore.upload_image)
 const revise_article = computed(() => articleStore.revise_article)
 
-watch(upload_image, (val) => {
+watch(upload_image, (val: string) => {
   if (val) {
     const pos = articleStore.pos
-    md.value.$img2Url(pos, `${IMG}/article/upload/` + val)
+    md.value?.$img2Url(pos, `${IMG}/article/upload/` + val)
   }
 })
 
-watch(revise_article, (val) => {
+watch(revise_article, (val: ArticleEditDetail) => {
   if (val && Object.keys(val).length > 0) {
     markdown.value = val.markdown || ''
     form.title = val.title || ''
@@ -95,46 +98,48 @@ watch(revise_article, (val) => {
 }, { immediate: true })
 
 onMounted(() => {
-  const id = route.params.id
+  const idParam = route.params.id
+  const id = Array.isArray(idParam) ? idParam[0] : idParam
   if (id) {
     articleStore.getReviseArticleDetails({ id })
   }
 })
 
-const handleSubmit = () => {
-  formRef.value.validate().then(() => {
-    articleStore.articleSave({
-      title: form.title,
-      tags: tags.value,
-      markdown: markdown.value,
-      html: markdown.html
-    })
-  }).catch(err => {
-    console.log('error', err)
-  })
+const handleSubmit = async (): Promise<void> => {
+  try {
+    await formRef.value?.validate()
+    await articleStore.articleSave({
+        title: form.title,
+        tags: tags.value,
+        markdown: markdown.value,
+        html: markdown.html
+      })
+  } catch (error) {
+    console.log('error', error)
+  }
 }
 
-const addTag = () => {
+const addTag = (): void => {
   if (form.tag) {
     tags.value.push(form.tag)
     form.tag = ''
   }
 }
 
-const deleteTip = (tag) => {
+const deleteTip = (tag: string): void => {
   const index = tags.value.indexOf(tag)
   if (index !== -1) {
     tags.value.splice(index, 1)
   }
 }
 
-const onSave = (value, render) => {
+const onSave = (_value: string, render: string): void => {
   markdown.html = render
 }
 
-const imgAdd = (pos, $file) => {
+const imgAdd = (pos: string | number, file: File): void => {
   const formdata = new FormData()
-  formdata.append('image', $file)
+  formdata.append('image', file)
   articleStore.articleImageUpload({ formdata, pos })
 }
 </script>

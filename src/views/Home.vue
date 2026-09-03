@@ -240,23 +240,23 @@
   </main>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { AUDIO } from '@/config/url'
 
 const soundEnabled = ref(false)
-const bgm = ref(null)
+const bgm = ref<HTMLAudioElement | null>(null)
 const activeSection = ref('entrance')
 const revealedSections = ref(new Set(['entrance']))
 const scrollOffset = ref(0)
 const pointer = reactive({ x: 0, y: 0 })
-  const sectionRefs = reactive({})
-  let observer
-  let scrollFrame
-  let wheelIntent = 0
-  let wheelResetTimer
-  let pageUnlockTimer
-  let isWheelPaging = false
+const sectionRefs = reactive<Record<string, HTMLElement>>({})
+let observer: IntersectionObserver | undefined
+let scrollFrame: number | undefined
+let wheelIntent = 0
+let wheelResetTimer: number | undefined
+let pageUnlockTimer: number | undefined
+let isWheelPaging = false
 
 const sections = [
   { id: 'entrance', label: '入园' },
@@ -304,22 +304,22 @@ const projects = [
   },
 ]
 
-const pageStyle = computed(() => ({
+const pageStyle = computed<Record<string, string>>(() => ({
   '--pointer-x': `${pointer.x}px`,
   '--pointer-y': `${pointer.y}px`,
   '--scroll-y': `${scrollOffset.value}px`,
 }))
 
-function setSectionRef(id, element) {
-  if (element) sectionRefs[id] = element
+function setSectionRef(id: string, element: unknown): void {
+  if (element instanceof HTMLElement) sectionRefs[id] = element
 }
 
-function handlePointerMove(event) {
+function handlePointerMove(event: PointerEvent): void {
   pointer.x = event.clientX
   pointer.y = event.clientY
 }
 
-function handleScroll() {
+function handleScroll(): void {
   if (scrollFrame) return
 
   scrollFrame = window.requestAnimationFrame(() => {
@@ -328,20 +328,20 @@ function handleScroll() {
   })
 }
 
-function getChapterElements() {
+function getChapterElements(): HTMLElement[] {
   return Object.values(sectionRefs)
     .filter(Boolean)
     .sort((a, b) => a.offsetTop - b.offsetTop)
 }
 
-function getCurrentChapterIndex(chapters) {
+function getCurrentChapterIndex(chapters: HTMLElement[]): number {
   const currentY = window.scrollY + window.innerHeight * 0.5
   return chapters.reduce((currentIndex, chapter, index) => (
     chapter.offsetTop <= currentY + 8 ? index : currentIndex
   ), 0)
 }
 
-function getWheelDelta(event) {
+function getWheelDelta(event: WheelEvent): number {
   const multiplier = event.deltaMode === 1
     ? 16
     : event.deltaMode === 2
@@ -351,11 +351,11 @@ function getWheelDelta(event) {
   return event.deltaY * multiplier
 }
 
-function prefersReducedMotion() {
+function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-function pageWithWheel(direction) {
+function pageWithWheel(direction: number): boolean {
   const chapters = getChapterElements()
   const currentIndex = getCurrentChapterIndex(chapters)
   const nextIndex = currentIndex + (direction > 0 ? 1 : -1)
@@ -371,7 +371,7 @@ function pageWithWheel(direction) {
   return true
 }
 
-function handleWheel(event) {
+function handleWheel(event: WheelEvent): void {
   if (window.innerWidth <= 700 || prefersReducedMotion() || event.ctrlKey) return
   if (Math.abs(event.deltaY) < Math.abs(event.deltaX)) return
 
@@ -410,28 +410,30 @@ function handleWheel(event) {
   }
 }
 
-function handleScrollEnd() {
+function handleScrollEnd(): void {
   if (!isWheelPaging) return
   window.clearTimeout(pageUnlockTimer)
   isWheelPaging = false
 }
 
-function scrollToSection(id) {
+function scrollToSection(id: string): void {
   const target = sectionRefs[id]
   if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-async function toggleSound() {
+async function toggleSound(): Promise<void> {
   if (!bgm.value) return
 
+  const audio = bgm.value
+
   if (soundEnabled.value) {
-    bgm.value.pause()
+    audio.pause()
     soundEnabled.value = false
     return
   }
 
   try {
-    await bgm.value.play()
+    await audio.play()
     soundEnabled.value = true
   } catch (error) {
     soundEnabled.value = false
@@ -457,7 +459,7 @@ onMounted(() => {
     { threshold: [0.2, 0.45, 0.7], rootMargin: '-12% 0px -35% 0px' },
   )
 
-    Object.values(sectionRefs).forEach(section => section && observer.observe(section))
+    Object.values(sectionRefs).forEach(section => observer?.observe(section))
     window.addEventListener('scroll', handleScroll, { passive: true })
     window.addEventListener('wheel', handleWheel, { passive: false })
     window.addEventListener('scrollend', handleScrollEnd)
@@ -465,14 +467,14 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-    observer?.disconnect()
-    window.removeEventListener('scroll', handleScroll)
-    window.removeEventListener('wheel', handleWheel)
-    window.removeEventListener('scrollend', handleScrollEnd)
-    window.clearTimeout(wheelResetTimer)
-    window.clearTimeout(pageUnlockTimer)
-    if (scrollFrame) window.cancelAnimationFrame(scrollFrame)
-  })
+  observer?.disconnect()
+  window.removeEventListener('scroll', handleScroll)
+  window.removeEventListener('wheel', handleWheel)
+  window.removeEventListener('scrollend', handleScrollEnd)
+  if (wheelResetTimer) window.clearTimeout(wheelResetTimer)
+  if (pageUnlockTimer) window.clearTimeout(pageUnlockTimer)
+  if (scrollFrame !== undefined) window.cancelAnimationFrame(scrollFrame)
+})
 </script>
 
 <style lang="less" scoped>

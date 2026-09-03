@@ -79,18 +79,19 @@
   </main>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { usePoetryStore } from '@/store/poetry'
 import { ArrowUpOutlined } from '@ant-design/icons-vue'
+import type { PoemContent } from '@/types/poetry'
 
 const route = useRoute()
 const poetryStore = usePoetryStore()
 
 const poem = computed(() => poetryStore.poem)
 const section = computed(() => poetryStore.poem.section)
-const content = computed(() => poetryStore.poem.content)
+const content = computed<PoemContent>(() => poetryStore.poem.content)
 const showBackToTop = ref(false)
 
 const handleScroll = () => {
@@ -107,7 +108,8 @@ const scrollToTop = () => {
 }
 
 onMounted(() => {
-  const title = route.params.title
+  const titleParam = route.params.title
+  const title = Array.isArray(titleParam) ? titleParam[0] : titleParam
   if (title) {
     poetryStore.getPoemByTitle({ title })
   }

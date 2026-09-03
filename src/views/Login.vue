@@ -23,19 +23,20 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { UserOutlined, LockOutlined } from '@ant-design/icons-vue'
 import { useUserStore } from '@/store/user'
 import net from '@/utils/net'
 import { LOGIN } from '@/config/url'
-import { CookieUtils } from '@/utils/cookie'
 import router from '@/router'
+import type { FormInstance } from 'ant-design-vue'
+import type { LoginRequest, LoginResponse } from '@/types/auth'
 
 const userStore = useUserStore()
-const formRef = ref(null)
+const formRef = ref<FormInstance>()
 
-const form = reactive({
+const form = reactive<LoginRequest>({
   account: '',
   password: ''
 })
@@ -48,23 +49,20 @@ const rules = {
   ]
 }
 
-const handleSubmit = () => {
-  formRef.value.validate().then(async () => {
-    try {
-      const res = await net.post(LOGIN, {
+const handleSubmit = async (): Promise<void> => {
+  await formRef.value?.validate()
+  try {
+      const res = await net.post<LoginResponse, LoginRequest>(LOGIN, {
         account: form.account.trim(),
         password: form.password.trim()
       })
-      if (res && res.uuid) {
-        CookieUtils.del('uuid')
-        CookieUtils.set('uuid', res.uuid)
-        // 兼容旧项目的逻辑，如果是 uuid 登录
-        router.push('/')
+      if (res?.token) {
+        userStore.setToken(res.token)
+        void router.push('/')
       }
-    } catch (error) {
-      console.error('Login failed:', error)
-    }
-  })
+  } catch (error) {
+    console.error('Login failed:', error)
+  }
 }
 </script>
 
