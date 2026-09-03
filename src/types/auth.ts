@@ -1,6 +1,9 @@
+export type UserRole = 'admin' | 'demo_user'
+
 export interface User {
-  _id?: string
+  id: string
   account: string
+  role: UserRole
 }
 
 export interface LoginRequest {
@@ -9,6 +12,6 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string
+  user: User
   msg?: string
 }

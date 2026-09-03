@@ -30,10 +30,12 @@ import { useUserStore } from '@/store/user'
 import net from '@/utils/net'
 import { LOGIN } from '@/config/url'
 import router from '@/router'
+import { useRoute } from 'vue-router'
 import type { FormInstance } from 'ant-design-vue'
 import type { LoginRequest, LoginResponse } from '@/types/auth'
 
 const userStore = useUserStore()
+const route = useRoute()
 const formRef = ref<FormInstance>()
 
 const form = reactive<LoginRequest>({
@@ -50,16 +52,19 @@ const rules = {
 }
 
 const handleSubmit = async (): Promise<void> => {
-  await formRef.value?.validate()
   try {
-      const res = await net.post<LoginResponse, LoginRequest>(LOGIN, {
-        account: form.account.trim(),
-        password: form.password.trim()
-      })
-      if (res?.token) {
-        userStore.setToken(res.token)
-        void router.push('/')
-      }
+    await formRef.value?.validate()
+    const res = await net.post<LoginResponse, LoginRequest>(LOGIN, {
+      account: form.account.trim(),
+      password: form.password
+    })
+    if (res?.user) {
+      userStore.setUser(res.user)
+      const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') && !route.query.redirect.startsWith('//')
+        ? route.query.redirect
+        : '/'
+      void router.push(redirect)
+    }
   } catch (error) {
     console.error('Login failed:', error)
   }

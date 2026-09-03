@@ -69,6 +69,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
+import DOMPurify from 'dompurify'
 import { useRoute } from 'vue-router'
 import { useArticleStore } from '@/store/article'
 import { isPc } from '@/utils/tool'
@@ -86,7 +87,9 @@ const modalImg = ref('')
 const showBackToTop = ref(false)
 
 const article = computed(() => articleStore.article)
-const html = computed(() => articleStore.article.html || '')
+const html = computed(() => DOMPurify.sanitize(articleStore.article.html || '', {
+  USE_PROFILES: { html: true }
+}))
 const loading = computed(() => articleStore.get_article_loading)
 
 const handleScroll = () => {

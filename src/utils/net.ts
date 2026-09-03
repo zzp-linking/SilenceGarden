@@ -24,14 +24,6 @@ const service: AxiosInstance = axios.create({
   withCredentials: true
 })
 
-service.interceptors.request.use(config => {
-  const token = useUserStore().token
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
 service.interceptors.response.use(
   (response: AxiosResponse<ApiResponse<unknown>>) => {
     const result = response.data
