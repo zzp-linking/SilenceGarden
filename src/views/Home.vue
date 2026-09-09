@@ -268,6 +268,14 @@ const sections = [
 
 const gardenPaths = [
   {
+    number: '00',
+    label: '对话 · AI',
+    title: '静语',
+    description: '把未成形的念头交给一段安静的对话。',
+    to: '/ai',
+    symbol: 'leaf',
+  },
+  {
     number: '01',
     label: '文字 · 文章',
     title: '砥砺',

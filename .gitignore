@@ -1,7 +1,8 @@
 node_modules
 dist/
 dist.zip
-docs/、
+docs/
+tests/
 
 # Local CodeGraph index / config
 .codegraph/

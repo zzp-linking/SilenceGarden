@@ -27,12 +27,11 @@
 import { reactive, ref } from 'vue'
 import { UserOutlined, LockOutlined } from '@ant-design/icons-vue'
 import { useUserStore } from '@/store/user'
-import net from '@/utils/net'
-import { LOGIN } from '@/config/url'
+import { authApi } from '@/api/auth'
 import router from '@/router'
 import { useRoute } from 'vue-router'
 import type { FormInstance } from 'ant-design-vue'
-import type { LoginRequest, LoginResponse } from '@/types/auth'
+import type { LoginRequest } from '@/types/auth'
 
 const userStore = useUserStore()
 const route = useRoute()
@@ -54,11 +53,11 @@ const rules = {
 const handleSubmit = async (): Promise<void> => {
   try {
     await formRef.value?.validate()
-    const res = await net.post<LoginResponse, LoginRequest>(LOGIN, {
+    const res = await authApi.login({
       account: form.account.trim(),
       password: form.password
     })
-    if (res?.user) {
+    if (res.user) {
       userStore.setUser(res.user)
       const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') && !route.query.redirect.startsWith('//')
         ? route.query.redirect

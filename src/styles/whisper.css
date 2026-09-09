@@ -1,0 +1,71 @@
+/* 静语 · 语义设计令牌（《静语 AI 对话模块产品设计文档》§9.3）
+   组件只允许引用变量，不得散落原始十六进制颜色。 */
+:root {
+  /* 基础色板 */
+  --whisper-paper: #f7f5f1;
+  --whisper-canvas: #f8f9fd;
+  --whisper-ink: #202522;
+  --whisper-ink-soft: #58625d;
+  --whisper-ink-faint: #8a948e;
+  --whisper-mist: #eef0f8;
+  --whisper-mist-deep: #e2e5f2;
+  --whisper-line: rgba(44, 51, 48, 0.11);
+  --whisper-line-strong: rgba(44, 51, 48, 0.18);
+  --whisper-blue: #5b7cdb;
+  --whisper-violet: #8068d8;
+  --whisper-cyan: #3f95aa;
+  --whisper-seal: #a94737;
+  --whisper-danger: #b42318;
+  --whisper-focus: #315746;
+
+  /* 派生：文本级强调色（保证 4.5:1 对比度） */
+  --whisper-blue-deep: #4b66c9;
+  --whisper-violet-deep: #6a4fc8;
+
+  /* 派生：表面与层级 */
+  --whisper-surface: #ffffff;
+  --whisper-sidebar: #f2f3f9;
+  --whisper-hover: rgba(91, 124, 219, 0.08);
+  --whisper-active: rgba(128, 104, 216, 0.13);
+  --whisper-overlay: rgba(32, 37, 34, 0.32);
+
+  /* 派生：阴影 */
+  --whisper-shadow-card: 0 8px 28px rgba(44, 51, 48, 0.08);
+  --whisper-shadow-menu: 0 10px 32px rgba(32, 37, 34, 0.14);
+  --whisper-shadow-dialog: 0 24px 64px rgba(32, 37, 34, 0.2);
+
+  /* 派生：圆角与动效 */
+  --whisper-radius-lg: 18px;
+  --whisper-radius-md: 12px;
+  --whisper-radius-sm: 8px;
+  --whisper-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --whisper-duration: 180ms;
+}
+
+/* 键盘焦点环：只作用于交互控件（按钮/链接/菜单项），文本输入框的聚焦由各组件的
+   border / focus-within 描边表达，避免 textarea 出现突兀的深色外框。
+   :where() 保持零优先级，任何组件都可以用自己的焦点样式覆盖。 */
+:where(.ai-shell button, .ai-shell a, .ai-shell [role='button'], .ai-shell [role='menuitem']):focus-visible {
+  border-radius: var(--whisper-radius-sm);
+  outline: 2px solid var(--whisper-violet);
+  outline-offset: 2px;
+}
+
+/* 细滚动条（消息流 / 侧边栏共用） */
+.whisper-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(44, 51, 48, 0.18) transparent;
+}
+.whisper-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.whisper-scroll::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: rgba(44, 51, 48, 0.16);
+}
+.whisper-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(44, 51, 48, 0.3);
+}
+.whisper-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}

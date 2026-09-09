@@ -7,6 +7,7 @@ declare module 'vue-router' {
   interface RouteMeta {
     auth?: boolean
     roles?: UserRole[]
+    layout?: 'default' | 'fullscreen'
   }
 }
 
@@ -21,7 +22,20 @@ const routes: RouteRecordRaw[] = [
   { path: '/poem/:title', name: 'Poem', component: () => import('@/views/Poem.vue') },
   { path: '/violin', name: 'ViolinCatalog', component: () => import('@/views/ViolinCatalog.vue') },
   { path: '/violin/:id', name: 'Violin', component: () => import('@/views/Violin.vue') },
-  { path: '/login', name: 'Login', component: () => import('@/views/Login.vue') }
+  { path: '/login', name: 'Login', component: () => import('@/views/Login.vue') },
+  { path: '/ai', name: 'AiChat', component: () => import('@/views/AiChat.vue'), meta: { layout: 'fullscreen' } },
+  {
+    path: '/admin',
+    component: () => import('@/views/admin/AdminLayout.vue'),
+    meta: { auth: true, roles: ['admin'], layout: 'fullscreen' },
+    children: [
+      { path: '', name: 'AdminOverview', component: () => import('@/views/admin/AdminOverview.vue') },
+      { path: 'users', name: 'AdminUsers', component: () => import('@/views/admin/AdminUsers.vue') },
+      { path: 'ai-settings', name: 'AdminAiSettings', component: () => import('@/views/admin/AdminAiSettings.vue') },
+      { path: 'ai-runs', name: 'AdminAiFailures', component: () => import('@/views/admin/AdminAiFailures.vue') },
+      { path: 'audit-logs', name: 'AdminAuditLogs', component: () => import('@/views/admin/AdminAuditLogs.vue') }
+    ]
+  }
 ]
 
 const router = createRouter({
@@ -34,8 +48,9 @@ const router = createRouter({
   }
 })
 
-router.beforeEach(to => {
+router.beforeEach(async to => {
   const userStore = useUserStore()
+  if (!userStore.hydrated) await userStore.hydrate()
   if (to.meta.auth && !userStore.isAuthenticated) {
     return { name: 'Login', query: { redirect: to.fullPath } }
   }
