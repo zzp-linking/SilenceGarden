@@ -9,8 +9,8 @@ import { computed } from 'vue'
 export type IconName =
   | 'arrow-down' | 'arrow-up' | 'arrow-up-right'
   | 'check' | 'chevron-down' | 'chevron-left' | 'chevron-right'
-  | 'copy' | 'ellipsis' | 'image' | 'loader-circle' | 'log-in'
-  | 'menu' | 'panel-left-close' | 'panel-left-open' | 'pencil'
+  | 'copy' | 'ellipsis' | 'image' | 'loader-circle' | 'log-in' | 'log-out'
+  | 'key-round' | 'menu' | 'panel-left-close' | 'panel-left-open' | 'pencil'
   | 'plus' | 'refresh-cw' | 'search' | 'sparkles' | 'square'
   | 'square-pen' | 'trash-2' | 'x'
 

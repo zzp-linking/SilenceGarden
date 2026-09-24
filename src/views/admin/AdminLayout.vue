@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useUserStore } from '@/store/user'
+import { useUserStore } from '@/stores/user'
 const userStore = useUserStore()
 </script>
 <template><main class="admin-shell"><aside class="admin-nav"><div class="admin-brand"><span>静</span><strong>静语管理</strong></div><nav aria-label="管理导航"><router-link to="/admin">总览</router-link><router-link to="/admin/users">用户</router-link><router-link to="/admin/ai-settings">AI 设置</router-link><router-link to="/admin/ai-runs">失败日志</router-link><router-link to="/admin/audit-logs">审计日志</router-link></nav><div class="admin-nav-foot"><span>{{ userStore.user?.account }}</span><router-link to="/ai">返回静语</router-link></div></aside><section class="admin-content"><router-view /></section></main></template>

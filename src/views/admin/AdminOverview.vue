@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useAdminAiStore } from '@/stores/adminAi'
+import { useAdminAiStore } from '@/stores/ai/adminAi'
 import { microCnyToYuan } from '@/utils/microCny'
+import StreamDiagnosticsPanel from '@/components/admin/StreamDiagnosticsPanel.vue'
 
 const store = useAdminAiStore()
 const { usage, loading, error } = storeToRefs(store)
 let timer: ReturnType<typeof setInterval> | undefined
 const actualYuan = computed(() => usage.value ? microCnyToYuan(usage.value.global.actual_micro_cny) : '0')
 
+// 总览属于运维视图，页面停留期间每十秒刷新一次累计指标。
 onMounted(() => { void store.loadUsage(); timer = setInterval(() => { void store.loadUsage() }, 10_000) })
+// 离开后台总览后停止轮询，避免隐藏页面继续请求。
 onBeforeUnmount(() => { if (timer) clearInterval(timer) })
 </script>
 
@@ -28,10 +31,11 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
         <article><small>Tokens</small><strong>{{ usage.global.tokens.output + usage.global.tokens.input_cache_hit + usage.global.tokens.input_cache_miss }}</strong><span>思考 {{ usage.global.tokens.reasoning }}</span></article>
         <article><small>预占与失败</small><strong>{{ usage.active_reservations }}</strong><span>失败 {{ usage.global.failure_count }}</span></article>
       </div>
-      <div class="readiness">
+		<div class="readiness">
         <h2>依赖就绪</h2>
         <span :class="{ good: usage.readiness.ready }">{{ usage.readiness.ready ? 'Mongo / Redis / RunManager 正常' : `失败：${usage.readiness.failed?.join('、') || '未知'}` }}</span>
-      </div>
+		</div>
+		<StreamDiagnosticsPanel :diagnostics="usage.stream" />
     </template>
   </section>
 </template>

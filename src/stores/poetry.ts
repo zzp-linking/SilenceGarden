@@ -14,6 +14,7 @@ interface PoetryState {
 export const usePoetryStore = defineStore('poetry', {
   state: (): PoetryState => ({ catalog: [], keyword: '', poem: emptyPoetry() }),
   actions: {
+    /** 加载完整诗词目录。 */
     async getPoetryCatalog(): Promise<void> {
       const globalStore = useGlobalStore()
       globalStore.setLoading(true)
@@ -24,6 +25,7 @@ export const usePoetryStore = defineStore('poetry', {
         globalStore.setLoading(false)
       }
     },
+    /** 按关键词加载过滤后的诗词目录。 */
     async getPoetryCatalogByKeyword(params: KeywordParams): Promise<void> {
       const globalStore = useGlobalStore()
       globalStore.setLoading(true)
@@ -34,6 +36,7 @@ export const usePoetryStore = defineStore('poetry', {
         globalStore.setLoading(false)
       }
     },
+    /** 按标题加载阅读页正文，开始请求前先清除上一首内容。 */
     async getPoemByTitle(params: TitleParams): Promise<void> {
       const globalStore = useGlobalStore()
       this.poem = emptyPoetry()
@@ -45,6 +48,7 @@ export const usePoetryStore = defineStore('poetry', {
         globalStore.setLoading(false)
       }
     },
+    /** 保存目录搜索关键词，供页面和路由切换后复用。 */
     setKeyword(value: string): void {
       this.keyword = value
     }

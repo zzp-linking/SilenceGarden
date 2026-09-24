@@ -1,6 +1,6 @@
 import axios, { type AxiosError, type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import router from '@/router'
-import { useUserStore } from '@/store/user'
+import { useUserStore } from '@/stores/user'
 import { message } from '@/utils/talk'
 import type { ApiResponse } from '@/types/api'
 
@@ -10,6 +10,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function unwrap<T>(response: ApiResponse<unknown>): T {
   const result = response.result
+  // 旧列表接口会额外包一层 { list }，这里统一还原成调用方期望的数组。
   if (isRecord(result) && Object.keys(result).length === 1 && Array.isArray(result.list)) {
     return result.list as T
   }
@@ -29,6 +30,7 @@ service.interceptors.response.use(
     const result = response.data
     if (result.code === 200) return response
 
+    // 101 是旧接口约定的会话失效码，需要同时清理本地身份并回到登录页。
     if (result.code === 101) {
       message(result.message, 4)
       useUserStore().logout()
@@ -64,6 +66,7 @@ const net: NetClient = {
 
 export default net
 
+/** 将旧接口 URL 中的 `{参数名}` 占位符替换为实际路径参数。 */
 export function restful<T extends object>(url: string, params: T): string {
   return Object.keys(params).reduce(
     (result, key) => result.replace(new RegExp(`{${key}}`, 'g'), String(params[key as keyof T])),

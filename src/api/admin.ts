@@ -13,30 +13,46 @@ import type {
   QuotaOverride
 } from '@/types/admin'
 
+/** 后台游标分页接口的通用查询项。 */
 export interface PageOptions {
+  /** 上一页响应给出的不透明游标。 */
   cursor?: string
+  /** 期望返回的最大记录数。 */
   limit?: number
 }
 
+/** 管理员创建演示账号时提交的字段。 */
 export interface CreateUserInput {
+  /** 新用户登录账号。 */
   account: string
+  /** 账号失效时间；缺省表示长期有效。 */
   expires_at?: string
+  /** 覆盖默认账号额度的个性化配置。 */
   quota_override?: QuotaOverride
 }
 
+/** 管理员允许局部修改的账号字段。 */
 export interface UserPatchInput {
+  /** 要切换到的账号启用状态。 */
   status?: 'active' | 'disabled'
+  /** 新的账号失效时间。 */
   expires_at?: string
+  /** 是否清除现有失效时间。 */
   clear_expires?: boolean
+  /** 新的账号额度覆盖配置。 */
   quota_override?: QuotaOverride
+  /** 是否恢复使用全局默认账号额度。 */
   clear_quota?: boolean
 }
 
 export interface UserCommandResponse {
+  /** 命令执行后的最新用户快照。 */
   user: AdminUserSummary
+  /** 创建账号或重置密码时仅返回一次的临时密码。 */
   temporary_password?: string
 }
 
+/** 后台 AI 管理功能依赖的网络接口。 */
 export interface AdminApi {
   usage(): Promise<AdminUsage>
   users(options?: PageOptions): Promise<AdminUserPage>
@@ -60,8 +76,38 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value)
+	return typeof value === 'number' && Number.isFinite(value)
 }
+
+function isNonNegativeInteger(value: unknown): value is number {
+	return isNumber(value) && Number.isSafeInteger(value) && value >= 0
+}
+
+// 诊断接口字段很多，集中列举可以让运行时校验与类型声明保持同步。
+const streamDiagnosticFields = [
+	'current_connections', 'total_connections', 'reconnects', 'replay_from_zero',
+	'replay_requests', 'replayed_events', 'slow_connection_disconnects',
+	'replay_duration_total_ms', 'replay_duration_max_ms',
+	'redis_append_requests', 'redis_append_successes', 'redis_append_failures',
+	'redis_appended_events', 'redis_appended_bytes', 'redis_append_duration_total_ms',
+	'redis_append_duration_max_ms', 'event_id_conflicts', 'public_sequence_conflicts',
+	'public_sequence_gaps', 'capacity_exceeded',
+	'finalization_requests', 'finalization_successes', 'finalization_failures',
+	'finalization_duration_total_ms', 'finalization_duration_max_ms',
+	'finalization_assemble_failures', 'finalization_settle_failures',
+	'finalization_message_failures', 'finalization_run_failures',
+	'finalization_event_failures', 'finalization_notify_failures',
+	'finalization_retention_failures',
+	'mongo_message_commit_requests', 'mongo_message_commit_failures',
+	'mongo_message_commit_duration_total_ms', 'mongo_message_commit_duration_max_ms',
+	'mongo_run_commit_requests', 'mongo_run_commit_failures',
+	'mongo_run_commit_duration_total_ms', 'mongo_run_commit_duration_max_ms',
+	'recovery_sweeps', 'recovery_candidates', 'recovery_recovered', 'recovery_failed',
+	'recovery_interrupted', 'recovery_data_lost', 'pending_finalizations',
+	'oldest_pending_age_ms', 'stop_requests', 'stop_successes', 'stop_failures',
+	'post_stop_event_rejections', 'first_text_events', 'first_text_latency_total_ms',
+	'first_text_latency_max_ms'
+] as const
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(item => typeof item === 'string')
@@ -93,15 +139,17 @@ function isUserUsage(value: unknown): boolean {
 }
 
 function isAdminUsage(value: unknown): value is AdminUsage {
-  if (!isRecord(value) || typeof value.date !== 'string' || !isRecord(value.global) || !isNumber(value.active_reservations) || !isNumber(value.active_runs) || !isRecord(value.readiness)) return false
-  const global = value.global
-  const readiness = value.readiness
-  const calls = isRecord(global.calls) ? global.calls : null
+	if (!isRecord(value) || typeof value.date !== 'string' || !isRecord(value.global) || !isNumber(value.active_reservations) || !isNumber(value.active_runs) || !isRecord(value.readiness) || !isRecord(value.stream)) return false
+	const global = value.global
+	const readiness = value.readiness
+	const stream = value.stream
+	const calls = isRecord(global.calls) ? global.calls : null
   return isUserUsage({ answer_rounds: global.answer_rounds, actual_micro_cny: global.actual_micro_cny, tokens: global.tokens })
     && calls !== null && ['answer', 'moderation', 'title', 'summary'].every(key => isNumber(calls[key]))
     && isNumber(global.execution_credit_rounds) && isNumber(global.execution_credit_micro_cny)
-    && isNumber(global.failure_count) && typeof global.updated_at === 'string'
-    && typeof readiness.ready === 'boolean' && (readiness.failed === undefined || isStringArray(readiness.failed))
+		&& isNumber(global.failure_count) && typeof global.updated_at === 'string'
+		&& typeof readiness.ready === 'boolean' && (readiness.failed === undefined || isStringArray(readiness.failed))
+		&& streamDiagnosticFields.every(key => isNonNegativeInteger(stream[key]))
 }
 
 function isModelPrice(value: unknown): boolean {
@@ -111,6 +159,7 @@ function isModelPrice(value: unknown): boolean {
 }
 
 function isSettings(value: unknown): value is AiSettings {
+  // 设置响应属于管理边界，所有嵌套段都必须通过校验后才允许进入可编辑表单。
   if (!isRecord(value) || value.id !== 'global' || !isNumber(value.revision) || typeof value.updated_by !== 'string' || typeof value.updated_at !== 'string') return false
   if (!isRecord(value.service) || typeof value.service.enabled !== 'boolean' || typeof value.service.maintenance_message !== 'string') return false
   const quotas = value.quotas
@@ -171,6 +220,7 @@ function pageQuery(options: PageOptions = {}): string {
 
 function adminUserId(value: string): AdminUserId { return value as AdminUserId }
 
+/** 使用真实 V2 接口并在边界处校验响应结构。 */
 export class HttpAdminApi implements AdminApi {
   constructor(private readonly client: ClientV2 = clientV2) {}
 
@@ -251,9 +301,9 @@ export class MockAdminApi implements AdminApi {
   }]
   private currentSettings = defaultSettings()
 
-  async usage(): Promise<AdminUsage> {
-    return { date: '20260907', global: { answer_rounds: 1, calls: { answer: 1, moderation: 0, title: 0, summary: 0 }, tokens: { input_cache_hit: 0, input_cache_miss: 42, output: 18, reasoning: 8 }, actual_micro_cny: 1200, execution_credit_rounds: 0, execution_credit_micro_cny: 0, failure_count: 0, updated_at: new Date().toISOString() }, active_reservations: 0, active_runs: 0, readiness: { ready: true, failed: [] } }
-  }
+	async usage(): Promise<AdminUsage> {
+		return { date: '20260907', global: { answer_rounds: 1, calls: { answer: 1, moderation: 0, title: 0, summary: 0 }, tokens: { input_cache_hit: 0, input_cache_miss: 42, output: 18, reasoning: 8 }, actual_micro_cny: 1200, execution_credit_rounds: 0, execution_credit_micro_cny: 0, failure_count: 0, updated_at: new Date().toISOString() }, active_reservations: 0, active_runs: 0, readiness: { ready: true, failed: [] }, stream: { current_connections: 0, total_connections: 0, reconnects: 0, replay_from_zero: 0, replay_requests: 0, replayed_events: 0, slow_connection_disconnects: 0, replay_duration_total_ms: 0, replay_duration_max_ms: 0, redis_append_requests: 0, redis_append_successes: 0, redis_append_failures: 0, redis_appended_events: 0, redis_appended_bytes: 0, redis_append_duration_total_ms: 0, redis_append_duration_max_ms: 0, event_id_conflicts: 0, public_sequence_conflicts: 0, public_sequence_gaps: 0, capacity_exceeded: 0, finalization_requests: 0, finalization_successes: 0, finalization_failures: 0, finalization_duration_total_ms: 0, finalization_duration_max_ms: 0, finalization_assemble_failures: 0, finalization_settle_failures: 0, finalization_message_failures: 0, finalization_run_failures: 0, finalization_event_failures: 0, finalization_notify_failures: 0, finalization_retention_failures: 0, mongo_message_commit_requests: 0, mongo_message_commit_failures: 0, mongo_message_commit_duration_total_ms: 0, mongo_message_commit_duration_max_ms: 0, mongo_run_commit_requests: 0, mongo_run_commit_failures: 0, mongo_run_commit_duration_total_ms: 0, mongo_run_commit_duration_max_ms: 0, recovery_sweeps: 0, recovery_candidates: 0, recovery_recovered: 0, recovery_failed: 0, recovery_interrupted: 0, recovery_data_lost: 0, pending_finalizations: 0, oldest_pending_age_ms: 0, stop_requests: 0, stop_successes: 0, stop_failures: 0, post_stop_event_rejections: 0, first_text_events: 0, first_text_latency_total_ms: 0, first_text_latency_max_ms: 0 } }
+	}
 
   async users(): Promise<AdminUserPage> { return { date: '20260907', users: structuredClone(this.data) } }
 

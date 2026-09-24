@@ -1,6 +1,10 @@
 <script setup lang="ts">
+/**
+ * 左侧历史：按今天 / 昨天 / 更早分组。
+ * 桌面端 collapsed 折叠为窄条；窄屏 floating + open 作为抽屉。
+ */
 import { computed, nextTick, ref, watch } from 'vue'
-import type { Conversation, ConversationId } from '@/types/ai'
+import type { Conversation, ConversationId } from '@/features/ai/model'
 import AppIcon from './AppIcon.vue'
 import WhisperRipple from './WhisperRipple.vue'
 
@@ -11,6 +15,7 @@ const props = defineProps<{
   loading?: boolean
   canSearch?: boolean
   showLogin?: boolean
+  /** true 时作为覆盖在主栏上的抽屉，而不是文档流侧栏。 */
   floating?: boolean
   open?: boolean
 }>()
@@ -65,6 +70,7 @@ function closeMenu(): void {
   menuFor.value = null
 }
 
+/** 进入行内重命名：先记下原标题，取消时靠 renameCancelled 避免 blur 误提交。 */
 function beginRename(item: Conversation): void {
   closeMenu()
   editing.value = item.id

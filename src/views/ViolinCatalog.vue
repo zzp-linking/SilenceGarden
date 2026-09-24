@@ -72,12 +72,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { useViolinStore } from '@/store/violin'
+import { useViolinStore } from '@/stores/violin'
 import { IMG } from '@/config/url'
 
 const violinStore = useViolinStore()
 const catalog = computed(() => violinStore.catalog)
 
+// 接口只返回资源文件名，目录页统一补齐静态资源根路径。
 const srcJoin = (src: string): string => `${IMG}/violin/${src}`
 
 onMounted(() => {

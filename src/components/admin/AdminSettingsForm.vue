@@ -32,10 +32,23 @@ const props = defineProps<{ settings: AiSettings; busy?: boolean }>()
 const emit = defineEmits<{ save: [settings: AiSettings] }>()
 const localError = ref('')
 
+const quotaConcurrentMaximum: Record<keyof AiSettings['quotas'], number> = {
+  global: 8,
+  account_default: 3,
+  anonymous_ip: 8,
+  anonymous_device: 8
+}
+
+function quotaConcurrentMax(scope: keyof AiSettings['quotas']): number {
+  return quotaConcurrentMaximum[scope]
+}
+
 function cloneJson<T>(value: T): T {
+  // 设置对象仅含 JSON 数据，深拷贝可阻止表单直接修改父组件传入值。
   return JSON.parse(JSON.stringify(value)) as T
 }
 
+/** 将服务端设置复制为表单草稿，并补全可编辑的模型价格项。 */
 function toDraft(settings: AiSettings): SettingsDraft {
   const models: Record<string, PriceDraft> = {}
   const quotas = Object.fromEntries(Object.entries(settings.quotas).map(([name, quota]) => [name, {
@@ -76,6 +89,7 @@ watch(() => props.settings, value => Object.assign(draft, toDraft(value)), { dee
 const priceModels = computed(() => Array.from(new Set([...draft.models.allowlist, ...Object.keys(draft.pricing.models)])))
 
 function ensurePrice(model: string): PriceDraft {
+  // allowlist 新增模型时先创建空价格行，避免模板访问 undefined。
   if (!draft.pricing.models[model]) draft.pricing.models[model] = { input_cache_hit: '0', input_cache_miss: '0', output: '0' }
   return draft.pricing.models[model]
 }
@@ -85,6 +99,7 @@ function setPrice(model: string, key: keyof PriceDraft, event: Event): void {
   if (target instanceof HTMLInputElement) ensurePrice(model)[key] = target.value
 }
 
+/** 把可能含临时字段的表单草稿收敛回服务端接受的完整设置。 */
 function buildSettings(): AiSettings {
   const allowlist = draft.models.allowlist_text.split(/[\n,]/).map(item => item.trim()).filter(Boolean)
   const prices: AiSettings['pricing']['models'] = {}
@@ -136,7 +151,7 @@ function submit(): void {
           <h3>{{ name === 'global' ? '全站' : name === 'account_default' ? '登录用户' : name === 'anonymous_ip' ? '匿名 IP' : '匿名设备' }}</h3>
           <label>日预算（元）<input v-model="quota.daily_micro_cny_yuan" inputmode="decimal" min="0" placeholder="例如 5" /></label>
           <label>日轮数<input v-model.number="quota.daily_rounds" type="number" min="0" step="1" /></label>
-          <label>最大并发<input v-model.number="quota.max_concurrent" type="number" min="0" step="1" /></label>
+          <label>最大并发（上限 {{ quotaConcurrentMax(name) }}）<input v-model.number="quota.max_concurrent" type="number" min="0" :max="quotaConcurrentMax(name)" step="1" /></label>
           <label>每分钟请求<input v-model.number="quota.requests_per_minute" type="number" min="0" step="1" /></label>
         </section>
       </div>

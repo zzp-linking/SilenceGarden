@@ -1,9 +1,13 @@
 <script setup lang="ts">
+/**
+ * 消息列：每轮先用户气泡再当前选中的助手版本。
+ * 贴近底部时跟随流式增高；用户上翻超过 120px 出现「回到最新」。
+ */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AssistantMessage from './AssistantMessage.vue'
 import UserMessage from './UserMessage.vue'
 import AppIcon from './AppIcon.vue'
-import type { ClientRunState, Conversation, MessageId, TurnViewModel, UserMessage as UserMessageType } from '@/types/ai'
+import type { ClientRunState, Conversation, MessageId, TurnViewModel, UserMessage as UserMessageType } from '@/features/ai/model'
 
 const props = defineProps<{ conversation?: Conversation; runs: Record<string, ClientRunState> }>()
 const emit = defineEmits<{
@@ -29,6 +33,7 @@ const runsByMessage = computed(() => {
 })
 const runFingerprint = computed(() => Object.values(props.runs).map(run => `${run.runId}:${run.lastSeq}`).join('|'))
 
+/** 距底部不足 120px 视为「在底部」，流式增量才自动跟随。 */
 function checkBottom(): void {
   const node = scroller.value
   if (node) atBottom.value = node.scrollHeight - node.scrollTop - node.clientHeight < 120

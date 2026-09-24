@@ -1,19 +1,22 @@
 <script setup lang="ts">
+/**
+ * 生成状态行：进行中显示停止；失败且 retryable 显示重连。
+ * completed/stopped 不占一行，避免终态后仍挡输入区。
+ */
 import { computed } from 'vue'
-import type { ClientRunState } from '@/types/ai'
+import type { ClientRunState } from '@/features/ai/model'
 import WhisperRipple from './WhisperRipple.vue'
 import AppIcon from './AppIcon.vue'
 
 const props = defineProps<{ run?: ClientRunState }>()
 const emit = defineEmits<{ cancel: []; reconnect: [] }>()
 
-const active = computed(() => Boolean(props.run && ['reserved', 'queued', 'running', 'stopping'].includes(props.run.state)))
+const active = computed(() => Boolean(props.run && ['reserved', 'queued', 'running'].includes(props.run.state)))
 const canStop = computed(() => Boolean(props.run && ['reserved', 'queued', 'running'].includes(props.run.state)))
 const statusText = computed(() => {
   const run = props.run
   if (!run) return ''
   if (run.connection === 'backoff') return `连接中断，将自动重试（第 ${run.reconnectAttempt} 次）`
-  if (run.state === 'stopping') return '正在停止'
   if (run.state === 'failed') return '这次回答没有完成'
   return '正在回应'
 })
@@ -25,10 +28,10 @@ const visible = computed(() => Boolean(props.run && (active.value || props.run.s
 <template>
   <div v-if="visible" class="run-indicator" role="status">
     <WhisperRipple v-if="active" :size="18" />
-    <span class="run-text" :class="{ failed: run?.state === 'failed' }">{{ statusText }}</span>
+    <!-- <span class="run-text" :class="{ failed: run?.state === 'failed' }">{{ statusText }}</span>
     <button v-if="canStop" type="button" class="run-button" aria-label="停止生成" @click="emit('cancel')">
       <AppIcon name="square" :size="11" /><span>停止</span>
-    </button>
+    </button> -->
     <button v-if="showRetry" type="button" class="run-button retry" @click="emit('reconnect')">
       <AppIcon name="refresh-cw" :size="12" /><span>重新连接</span>
     </button>

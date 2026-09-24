@@ -26,7 +26,7 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { UserOutlined, LockOutlined } from '@ant-design/icons-vue'
-import { useUserStore } from '@/store/user'
+import { useUserStore } from '@/stores/user'
 import { authApi } from '@/api/auth'
 import router from '@/router'
 import { useRoute } from 'vue-router'
@@ -50,6 +50,7 @@ const rules = {
   ]
 }
 
+/** 登录成功后优先返回守卫记录的原始目标页。 */
 const handleSubmit = async (): Promise<void> => {
   try {
     await formRef.value?.validate()
@@ -58,7 +59,7 @@ const handleSubmit = async (): Promise<void> => {
       password: form.password
     })
     if (res.user) {
-      userStore.setUser(res.user)
+      userStore.setSession(res)
       const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') && !route.query.redirect.startsWith('//')
         ? route.query.redirect
         : '/'

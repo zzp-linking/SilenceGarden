@@ -5,7 +5,7 @@ import { V2HttpError } from '@/api/clientV2'
 import { adminApi } from '@/api/admin'
 import AdminSettingsForm from '@/components/admin/AdminSettingsForm.vue'
 import type { AiSettings } from '@/types/admin'
-import { useAdminAiStore } from '@/stores/adminAi'
+import { useAdminAiStore } from '@/stores/ai/adminAi'
 
 const store = useAdminAiStore()
 const { settings, loading, error, errorCode } = storeToRefs(store)
@@ -22,6 +22,7 @@ async function load(): Promise<void> {
   await store.loadSettings()
 }
 
+/** 保存完整配置；版本冲突时重新加载服务端最新修订。 */
 async function save(next: AiSettings): Promise<void> {
   notice.value = ''
   try {
@@ -33,6 +34,7 @@ async function save(next: AiSettings): Promise<void> {
   }
 }
 
+/** 开关 AI 服务；关闭只阻止新任务，不中断已经开始的回答。 */
 async function toggle(): Promise<void> {
   const current = settings.value
   if (!current) return

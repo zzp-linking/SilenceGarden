@@ -34,11 +34,13 @@ export const useArticleStore = defineStore('article', {
     revise_article: emptyArticleEditDetail()
   }),
   actions: {
+    /** 新建或更新文章，保存成功后返回文章目录页。 */
     async articleSave(input: ArticleSaveInput): Promise<void> {
       const request: ArticleSaveRequest = { ...input, id: this.id }
       const result = await net.post<ArticleSaveResult, ArticleSaveRequest>(ARTICLE_SAVE, request)
       if (result) message('保存文章成功！', 2, () => { void router.push('/article') })
     },
+    /** 拉取文章目录，并通过全局 Store 驱动页面加载遮罩。 */
     async getArticleCatalog(): Promise<void> {
       const globalStore = useGlobalStore()
       globalStore.setLoading(true)
@@ -49,6 +51,7 @@ export const useArticleStore = defineStore('article', {
         globalStore.setLoading(false)
       }
     },
+    /** 根据文章 ID 加载阅读页所需的 HTML 详情。 */
     async getArticleDetails(params: IdParams): Promise<void> {
       const globalStore = useGlobalStore()
       this.article = emptyArticleDetail()
@@ -60,6 +63,7 @@ export const useArticleStore = defineStore('article', {
         globalStore.setLoading(false)
       }
     },
+    /** 加载 Markdown 编辑源，并记录后续保存使用的文章 ID。 */
     async getReviseArticleDetails(params: IdParams): Promise<void> {
       const globalStore = useGlobalStore()
       globalStore.setLoading(true)
@@ -73,6 +77,7 @@ export const useArticleStore = defineStore('article', {
         globalStore.setLoading(false)
       }
     },
+    /** 上传编辑器图片，并保存编辑器回填所需的位置标识。 */
     async articleImageUpload({ formdata, pos }: ArticleImageUploadInput): Promise<void> {
       const result = await net.post<ArticleImageUploadResult, FormData>(ARTICLE_IMAGE_UPLOAD, formdata)
       if (result) {

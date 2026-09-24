@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useAdminAiStore } from '@/stores/adminAi'
+import { useAdminAiStore } from '@/stores/ai/adminAi'
 const store = useAdminAiStore(); const { failures, failuresPage, loading, error } = storeToRefs(store); const limit = ref(50)
 onMounted(() => { void store.loadFailures() })
 </script>

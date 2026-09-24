@@ -66,9 +66,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { useArticleStore } from '@/store/article'
+import { useArticleStore } from '@/stores/article'
 
 const articleStore = useArticleStore()
+// 保持模板只读访问 Store，同时保留 Pinia 响应性。
 const catalog = computed(() => articleStore.catalog)
 
 onMounted(() => {

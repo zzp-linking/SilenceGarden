@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { PUBLIC_PATH } from '@/config/url'
-import { useUserStore } from '@/store/user'
+import { useUserStore } from '@/stores/user'
 import type { UserRole } from '@/types/auth'
 
 declare module 'vue-router' {
@@ -42,6 +42,7 @@ const router = createRouter({
   history: createWebHistory(`${PUBLIC_PATH}/`),
   routes,
   scrollBehavior(to, _from, savedPosition) {
+    // 诗词页自行维护阅读位置；浏览器后退则优先恢复历史滚动坐标。
     if (to.name === 'Poetry') return false
     if (savedPosition) return savedPosition
     return { top: 0, left: 0 }
@@ -50,6 +51,7 @@ const router = createRouter({
 
 router.beforeEach(async to => {
   const userStore = useUserStore()
+  // 首次导航先恢复 Cookie 会话，避免刷新受保护路由时被误判为未登录。
   if (!userStore.hydrated) await userStore.hydrate()
   if (to.meta.auth && !userStore.isAuthenticated) {
     return { name: 'Login', query: { redirect: to.fullPath } }

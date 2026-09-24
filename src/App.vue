@@ -10,12 +10,13 @@
 <script setup lang="ts">
 import zhCN from 'ant-design-vue/es/locale/zh_CN';
 import Loading from '@/components/Loading.vue';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/stores/global';
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 const globalStore = useGlobalStore();
 const route = useRoute()
+// AI 和管理后台自带完整壳层，其余页面继续使用站点默认导航布局。
 const isFullscreen = computed(() => route.meta.layout === 'fullscreen')
 </script>
 

@@ -1,6 +1,9 @@
 <script setup lang="ts">
+/**
+ * 可折叠的思考过程。streaming 时标签做微光；默认收起，避免长推理挤占正文。
+ */
 import { computed } from 'vue'
-import type { RunState } from '@/types/ai'
+import type { RunState } from '@/features/ai/model'
 import MarkdownContent from './MarkdownContent.vue'
 import WhisperRipple from './WhisperRipple.vue'
 import AppIcon from './AppIcon.vue'
@@ -16,7 +19,7 @@ const label = computed(() => streaming.value ? '正在梳理思绪' : props.reas
 <template>
   <section v-if="reasoning || label" class="reasoning" :class="{ streaming }">
     <button type="button" class="reasoning-toggle" :aria-expanded="expanded" @click="expanded = !expanded">
-      <WhisperRipple v-if="streaming" :size="16" />
+      <!-- <WhisperRipple v-if="streaming" :size="16" /> -->
       <span class="reasoning-label">{{ label }}</span>
       <AppIcon name="chevron-down" :size="15" class="chevron" :class="{ up: expanded }" />
     </button>
@@ -54,16 +57,30 @@ const label = computed(() => streaming.value ? '正在梳理思绪' : props.reas
 }
 /* 流式思考：文字微光（reduced-motion 下关闭） */
 .streaming .reasoning-label {
-  background: linear-gradient(90deg, var(--whisper-ink-soft) 25%, var(--whisper-violet) 50%, var(--whisper-ink-soft) 75%);
-  background-size: 220% 100%;
+  --reasoning-shimmer-highlight: color-mix(
+    in srgb,
+    var(--whisper-ink-soft) 40%,
+    var(--whisper-mist)
+  );
+  background: linear-gradient(
+    90deg,
+    var(--whisper-ink-soft) 0%,
+    var(--whisper-ink-soft) 32%,
+    var(--reasoning-shimmer-highlight) 45%,
+    var(--reasoning-shimmer-highlight) 55%,
+    var(--whisper-ink-soft) 68%,
+    var(--whisper-ink-soft) 100%
+  );
+  background-size: 300% 100%;
+  background-repeat: no-repeat;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: whisper-shimmer 1.9s linear infinite;
+  animation: whisper-shimmer 1.5s linear infinite;
 }
 @keyframes whisper-shimmer {
-  from { background-position: 120% 0; }
-  to { background-position: -120% 0; }
+  from { background-position: 100% 0; }
+  to { background-position: 0% 0; }
 }
 .reasoning-body {
   padding: 4px 0 4px;

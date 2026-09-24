@@ -16,6 +16,7 @@ interface ViolinState {
 export const useViolinStore = defineStore('violin', {
   state: (): ViolinState => ({ catalog: [], melody: emptyMusic(), last: '', next: '' }),
   actions: {
+    /** 加载小提琴曲目目录。 */
     async getVillinCatalog(): Promise<void> {
       const globalStore = useGlobalStore()
       globalStore.setLoading(true)
@@ -26,11 +27,13 @@ export const useViolinStore = defineStore('violin', {
         globalStore.setLoading(false)
       }
     },
+    /** 进入播放页前清空上一首曲目的播放和导航信息。 */
     violinInint(): void {
       this.melody = emptyMusic()
       this.last = ''
       this.next = ''
     },
+    /** 加载当前曲目以及前后曲目 ID。 */
     async getViolinInfo(params: IdParams): Promise<void> {
       const globalStore = useGlobalStore()
       globalStore.setLoading(true)
@@ -45,6 +48,7 @@ export const useViolinStore = defineStore('violin', {
         globalStore.setLoading(false)
       }
     },
+    /** 请求一首随机曲目，并通过路由跳转触发统一的详情加载。 */
     async getRamdonViolinInfo(params: IdParams): Promise<void> {
       const result = await net.get<Music>(restful(GET_MELODY_RANDOM, params))
       if (result?._id) void router.push(`/violin/${result._id}`)

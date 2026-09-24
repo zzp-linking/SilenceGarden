@@ -1,3 +1,9 @@
+/**
+ * 静语 HTTP 响应的运行时校验。
+ *
+ * 后端 JSON 一旦缺字段、多字段或类型不对，就抛 AiProtocolError，
+ * 避免把半残数据写进 Pinia。path 指向出错的 JSON 路径，便于对照抓包。
+ */
 import {
   RUN_STATES,
   toConversationId,
@@ -13,15 +19,20 @@ import {
   type VersionSelectionResult,
   type AcceptedRunRecord,
   type RunRecord
-} from '@/types/ai'
+} from '@/features/ai/model'
 
+/** 协议破坏：响应形状与前端契约不一致。 */
 export class AiProtocolError extends Error {
+  /**
+   * @param path 出错的 JSON 路径，例如 `bootstrap.limits.max_input_chars`
+   */
   constructor(path: string) {
     super(`静语接口响应不符合协议：${path}`)
     this.name = 'AiProtocolError'
   }
 }
 
+/** 要求 value 是普通对象，否则按 path 报协议错误。 */
 function record(value: unknown, path: string): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new AiProtocolError(path)
   return value as Record<string, unknown>
@@ -55,6 +66,7 @@ function isRunState(value: string): value is RunRecord['state'] {
   return RUN_STATES.some(state => state === value)
 }
 
+/** 解析会话摘要 DTO。source 只允许 server / ephemeral。 */
 export function parseConversationSummary(value: unknown, path = 'conversation'): ConversationSummary {
   const input = record(value, path)
   if (input.source !== 'server' && input.source !== 'ephemeral') throw new AiProtocolError(`${path}.source`)
@@ -72,6 +84,11 @@ export function parseConversationSummary(value: unknown, path = 'conversation'):
   }
 }
 
+/**
+ * 把摘要 DTO 合成页面 Conversation。
+ * 列表接口经常带回空 turn_ids；若本地已有 turns，必须保留，否则 hydrate 前气泡会闪没。
+ * @param previous 本地已有的对话（含 turns / active_run_id）
+ */
 export function normalizeConversation(summary: ConversationSummary, previous?: Partial<Conversation>): Conversation {
   const previousTurnIds = Array.isArray(previous?.turn_ids) ? previous.turn_ids : []
   const previousTurns = Array.isArray(previous?.turns) ? previous.turns : []
@@ -84,6 +101,7 @@ export function normalizeConversation(summary: ConversationSummary, previous?: P
   }
 }
 
+/** 解析会话列表分页。 */
 export function parseConversationSummaryPage(value: unknown): ConversationSummaryPage {
   const input = record(value, 'conversation_page')
   if (!Array.isArray(input.items)) throw new AiProtocolError('conversation_page.items')
@@ -93,6 +111,7 @@ export function parseConversationSummaryPage(value: unknown): ConversationSummar
   }
 }
 
+/** 解析一条历史消息。status / role / turn_index 均为必填。 */
 function parseHistoryMessage(value: unknown, index: number): HistoryMessage {
   const path = `message_page.items[${index}]`
   const input = record(value, path)
@@ -119,6 +138,7 @@ function parseHistoryMessage(value: unknown, index: number): HistoryMessage {
   }
 }
 
+/** 解析消息分页。 */
 export function parseMessagePage(value: unknown): MessagePage {
   const input = record(value, 'message_page')
   if (!Array.isArray(input.items)) throw new AiProtocolError('message_page.items')
@@ -128,6 +148,7 @@ export function parseMessagePage(value: unknown): MessagePage {
   }
 }
 
+/** 解析选版本命令结果；selected_assistant_id 必须出现在 items 的助手消息里。 */
 export function parseVersionSelectionResult(value: unknown): VersionSelectionResult {
   const input = record(value, 'version_selection')
   if (!Array.isArray(input.items)) throw new AiProtocolError('version_selection.items')
@@ -144,6 +165,7 @@ export function parseVersionSelectionResult(value: unknown): VersionSelectionRes
   }
 }
 
+/** 解析 Run 快照。operation / state / reservation 都做枚举与非负校验。 */
 export function parseRunRecord(value: unknown, path = 'run'): RunRecord {
   const input = record(value, path)
   const state = string(input.state, `${path}.state`)
@@ -167,6 +189,7 @@ export function parseRunRecord(value: unknown, path = 'run'): RunRecord {
   }
 }
 
+/** 解析创建 Run 的接受记录；比 RunRecord 强制要求 user_message_id。 */
 export function parseAcceptedRunRecord(value: unknown, path = 'accepted_run'): AcceptedRunRecord {
   const run = parseRunRecord(value, path)
   if (!run.user_message_id) throw new AiProtocolError(`${path}.user_message_id`)
@@ -179,12 +202,14 @@ export function parseAcceptedRunRecord(value: unknown, path = 'accepted_run'): A
   }
 }
 
+/** 解析 active runs 列表。服务端包在 `{ items: [...] }` 里。 */
 export function parseRunPage(value: unknown): RunRecord[] {
   const input = record(value, 'run_page')
   if (!Array.isArray(input.items)) throw new AiProtocolError('run_page.items')
   return input.items.map((item, index) => parseRunRecord(item, `run_page.items[${index}]`))
 }
 
+/** 解析 bootstrap。identity.kind 只允许 anonymous / user。 */
 export function parseBootstrapData(value: unknown): BootstrapData {
   const input = record(value, 'bootstrap')
   const service = record(input.service, 'bootstrap.service')

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+/**
+ * 隐藏文件选择器。open() 由「+」菜单调用；校验失败走 reject，成功走 prepared。
+ */
 import { ref } from 'vue'
 import { prepareImage, validateImageFile, type PreparedImage } from '@/utils/image'
 

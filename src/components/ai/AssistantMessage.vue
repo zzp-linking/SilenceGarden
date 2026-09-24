@@ -1,15 +1,20 @@
 <script setup lang="ts">
+/**
+ * 助手气泡：思考面板、Markdown 正文、Run 状态行、复制 / 重新生成 / 版本切换。
+ * 多版本用 v-show 保活，避免切换时丢掉已渲染的 Markdown。
+ */
 import { computed, ref } from 'vue'
 import MarkdownContent from './MarkdownContent.vue'
 import ReasoningPanel from './ReasoningPanel.vue'
 import RunIndicator from './RunIndicator.vue'
 import WhisperRipple from './WhisperRipple.vue'
 import AppIcon from './AppIcon.vue'
-import { isActiveRunState } from '@/types/ai'
-import type { AssistantVersion, ClientRunState, ConversationId, MessageId, TurnId } from '@/types/ai'
+import { isActiveRunState } from '@/features/ai/model'
+import type { AssistantVersion, ClientRunState, ConversationId, MessageId, TurnId } from '@/features/ai/model'
 
 const props = defineProps<{
   version: AssistantVersion
+  /** 该版本对应的流式状态；终态或历史版本可为 undefined。 */
   run?: ClientRunState
   versionIndex?: number
   versionCount?: number
@@ -29,6 +34,7 @@ const expanded = ref(false)
 
 const isStreaming = computed(() => Boolean(props.run && isActiveRunState(props.run.state)))
 const isLive = computed(() => Boolean(props.run && isActiveRunState(props.run.state)))
+/** 无在飞 Run 且因长度上限结束时，展示「继续回答」。 */
 const canContinue = computed(() => !props.run && props.version.finish_reason === 'max_output_tokens')
 const hasVersions = computed(() => (props.versionCount ?? 0) > 1)
 const isFirstVersion = computed(() => (props.versionIndex ?? 0) <= 0)
@@ -40,7 +46,7 @@ const isLastVersion = computed(() => (props.versionIndex ?? 0) >= (props.version
     <div class="assistant-label">
       <span class="assistant-seal">语</span>
       <span class="assistant-name">静语</span>
-      <WhisperRipple v-if="isLive" :size="17" class="label-ripple" />
+      <!-- <WhisperRipple v-if="isLive" :size="17" class="label-ripple" /> -->
     </div>
 
     <ReasoningPanel v-if="version.reasoning || run" v-model:expanded="expanded" :reasoning="version.reasoning" :state="run?.state" @copy-code="emit('copy', $event)" />

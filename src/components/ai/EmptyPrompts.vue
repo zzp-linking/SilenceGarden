@@ -1,4 +1,7 @@
 <script setup lang="ts">
+/**
+ * 空会话欢迎区。prompts 来自 bootstrap.suggested_prompts，点击写入输入框而不直接发送。
+ */
 import { computed } from 'vue'
 import WhisperRipple from './WhisperRipple.vue'
 import AppIcon from './AppIcon.vue'

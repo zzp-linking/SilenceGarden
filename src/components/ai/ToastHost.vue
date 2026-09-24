@@ -5,6 +5,7 @@ import type { IconName } from './AppIcon.vue'
 
 const { items, dismiss } = useToast()
 
+// 提示类型与图标在宿主集中映射，调用方只需关心语义类型。
 const ICONS: Record<ToastKind, IconName> = {
   success: 'check',
   error: 'x',

@@ -49,7 +49,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { useArticleStore } from '@/store/article'
+import { useArticleStore } from '@/stores/article'
 import { IMG } from '@/config/url'
 import { UserOutlined } from '@ant-design/icons-vue'
 import { mavonEditor } from 'mavon-editor'
@@ -105,6 +105,7 @@ onMounted(() => {
   }
 })
 
+/** 同时提交 Markdown 源文和编辑器渲染的 HTML 快照。 */
 const handleSubmit = async (): Promise<void> => {
   try {
     await formRef.value?.validate()

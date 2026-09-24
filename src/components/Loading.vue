@@ -9,6 +9,7 @@
 </template>
 
 <script setup lang="ts">
+// 该组件只呈现全局遮罩，加载状态由父级 Store 单向传入。
 withDefaults(defineProps<{ loading?: boolean }>(), { loading: false })
 </script>
 

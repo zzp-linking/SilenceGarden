@@ -71,7 +71,7 @@
 import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
 import DOMPurify from 'dompurify'
 import { useRoute } from 'vue-router'
-import { useArticleStore } from '@/store/article'
+import { useArticleStore } from '@/stores/article'
 import { isPc } from '@/utils/tool'
 import Loading from '@/components/Loading.vue'
 import { ArrowUpOutlined } from '@ant-design/icons-vue'

@@ -1,14 +1,20 @@
 <script setup lang="ts">
+/**
+ * 底部输入卡：草稿、附图、「+」菜单、发送 / 停止。
+ * 进行中的 Run 时禁用发送；Enter 发送、Shift+Enter 换行；IME 合成期间不发送。
+ */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ImagePicker from './ImagePicker.vue'
 import AppIcon from './AppIcon.vue'
 import type { PreparedImage } from '@/utils/image'
-import { isActiveRunState } from '@/types/ai'
-import type { RunState } from '@/types/ai'
+import { isActiveRunState } from '@/features/ai/model'
+import type { RunState } from '@/features/ai/model'
 
 const props = withDefaults(defineProps<{
+  /** v-model 绑定的草稿正文。 */
   modelValue: string
   disabled?: boolean
+  /** 当前对话的 Run 状态；进行中时按钮变为停止。 */
   runState?: RunState
   maxLength?: number
   image?: PreparedImage
@@ -30,7 +36,6 @@ const menu = ref<HTMLElement | null>(null)
 const composing = ref(false)
 const menuOpen = ref(false)
 const active = computed(() => props.runState ? isActiveRunState(props.runState) : false)
-const stopping = computed(() => props.runState === 'stopping')
 
 /** 接近上限时才展示字数，减少常驻噪音。 */
 const showCount = computed(() => props.modelValue.length > props.maxLength * 0.8)
@@ -44,13 +49,18 @@ function onKeydown(event: KeyboardEvent): void {
 function submit(): void {
   if (!props.disabled && !active.value && props.modelValue.trim()) emit('submit', props.image)
 }
+/** 按当前内容撑高 textarea；清空时也会重新测量并回落到单行高度。 */
+function resizeTextarea(): void {
+  if (!textarea.value) return
+  textarea.value.style.height = 'auto'
+  textarea.value.style.height = `${Math.min(textarea.value.scrollHeight, 200)}px`
+}
+
+/** 截断到 maxLength，并在 DOM 更新后同步输入框高度。 */
 async function update(value: string): Promise<void> {
   emit('update:modelValue', value.slice(0, props.maxLength))
   await nextTick()
-  if (textarea.value) {
-    textarea.value.style.height = 'auto'
-    textarea.value.style.height = `${Math.min(textarea.value.scrollHeight, 200)}px`
-  }
+  resizeTextarea()
 }
 
 /** 整张卡片都是输入区：点击任意空白处聚焦（Gemini/DeepSeek 同款）。 */
@@ -82,6 +92,7 @@ function onGlobalKeydown(event: KeyboardEvent): void {
 }
 
 onMounted(() => {
+  resizeTextarea()
   if (typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 1024px)').matches) textarea.value?.focus()
   window.addEventListener('pointerdown', onGlobalPointer)
   window.addEventListener('keydown', onGlobalKeydown)
@@ -97,6 +108,7 @@ watch(active, async (isActive, wasActive) => {
     textarea.value?.focus()
   }
 })
+watch(() => props.modelValue, resizeTextarea, { flush: 'post' })
 </script>
 
 <template>
@@ -155,8 +167,8 @@ watch(active, async (isActive, wasActive) => {
         </div>
         <span class="bar-spacer"></span>
         <span v-if="showCount" class="char-count">{{ modelValue.length }} / {{ maxLength }}</span>
-        <button v-if="active" type="button" class="stop-button" :disabled="stopping" :aria-label="stopping ? '正在停止' : '停止生成'" :title="stopping ? '正在停止' : '停止生成'" @click="emit('stop')">
-          <AppIcon :name="stopping ? 'loader-circle' : 'square'" :size="13" :class="{ spinning: stopping }" />
+        <button v-if="active" type="button" class="stop-button" aria-label="停止生成" title="停止生成" @click="emit('stop')">
+          <AppIcon name="square" :size="13" />
         </button>
         <button
           v-else

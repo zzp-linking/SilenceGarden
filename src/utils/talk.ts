@@ -3,6 +3,7 @@ import { message as antMessage, notification as antNotification, Modal } from 'a
 export type NoticeType = 0 | 1 | 2 | 3 | 4
 export type MessageType = 0 | 1 | 2 | 3 | 4
 
+/** 展示带标题和描述的全局通知。 */
 export function notice(
   title = '提示',
   desc = '将来送你上天堂',
@@ -19,6 +20,7 @@ export function notice(
   }
 }
 
+/** 展示短时全局消息，并返回 Ant Design 的关闭句柄。 */
 export function message(
   content = 'twinkle twinkle little star',
   type: MessageType = 0,
@@ -34,6 +36,7 @@ export function message(
   }
 }
 
+/** 展示无需用户二次确认的信息模态框。 */
 export function simpleModal(
   title = '信息',
   content = '确认继续操作',
@@ -49,6 +52,7 @@ export function simpleModal(
   }
 }
 
+/** 展示带确认和取消回调的操作确认框。 */
 export function confirmMoadl(
   title = '确认信息',
   content = '是否继续进行操作',
@@ -60,7 +64,9 @@ export function confirmMoadl(
   Modal.confirm({ title, content, onOk, onCancel, okText, cancelText })
 }
 
+/** 开关跨页面共享的持续加载消息。 */
 export function progressLoagding(status = false): void {
+  // 固定 key 保证多次调用只更新同一个全局加载提示。
   if (status) {
     antMessage.loading({ content: '加载中...', key: 'global-loading', duration: 0 })
   } else {

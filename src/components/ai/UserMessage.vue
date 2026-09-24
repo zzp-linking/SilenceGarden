@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { UserMessage } from '@/types/ai'
+/**
+ * 用户问题气泡。had_image 只提示「图片仅用于本轮」，原图不回放。
+ * 编辑按钮把原文交回输入框，由父级决定 send 还是 edit_and_fork。
+ */
+import type { UserMessage } from '@/features/ai/model'
 import AppIcon from './AppIcon.vue'
 
 defineProps<{ message: UserMessage }>()

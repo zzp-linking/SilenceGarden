@@ -34,6 +34,7 @@
           <a-input-search
             v-model:value="keyword"
             class="poetry-search"
+            maxlength="20"
             placeholder="题名 / 作者 / 诗句"
             enter-button="寻句"
             @search="indistinctSearch"
@@ -71,7 +72,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, nextTick } from 'vue'
-import { usePoetryStore } from '@/store/poetry'
+import { usePoetryStore } from '@/stores/poetry'
 
 const poetryStore = usePoetryStore()
 const poetryScrollKey = 'silence-garden:poetry-scroll-top'
@@ -82,6 +83,7 @@ const keyword = computed({
   set: (value: string) => poetryStore.setKeyword(value)
 })
 
+/** 按当前关键词请求服务端模糊搜索；空关键词恢复完整目录。 */
 const indistinctSearch = async (): Promise<void> => {
   if (keyword.value) {
     await poetryStore.getPoetryCatalogByKeyword({ keyword: keyword.value })
@@ -90,6 +92,7 @@ const indistinctSearch = async (): Promise<void> => {
   }
 }
 
+// 从详情页返回目录时，在 DOM 更新后恢复离开前的阅读位置。
 const restoreScrollPosition = async () => {
   await indistinctSearch()
   await nextTick()

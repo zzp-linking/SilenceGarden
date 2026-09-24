@@ -1,0 +1,12 @@
+packages:
+  - .
+
+allowBuilds:
+  core-js: true
+  esbuild: true
+  vue-demi: true
+
+overrides:
+  lodash: ^4.18.1
+  lodash-es: ^4.18.1
+  postcss: ^8.5.23

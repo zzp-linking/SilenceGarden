@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { adminApi } from '@/api/admin'
 import type { AdminUserId } from '@/types/admin'
 import { microCnyToYuan } from '@/utils/microCny'
-import { useAdminAiStore } from '@/stores/adminAi'
+import { useAdminAiStore } from '@/stores/ai/adminAi'
 
 const store = useAdminAiStore()
 const { users, usersPage, loading, error } = storeToRefs(store)
@@ -13,6 +13,7 @@ const temporaryPassword = ref('')
 const notice = ref('')
 const hasNext = computed(() => Boolean(usersPage.value?.next_cursor))
 
+/** 创建账号并暂存只展示一次的临时密码。 */
 async function create(): Promise<void> {
   if (!account.value.trim()) return
   try {
@@ -24,6 +25,7 @@ async function create(): Promise<void> {
   } catch (reason) { store.setError(reason, '创建用户失败') }
 }
 
+/** 使用当前修订号启用或停用账号，避免覆盖并发管理操作。 */
 async function toggle(id: AdminUserId, active: boolean, revision: number): Promise<void> {
   try {
     await adminApi.updateUser(id, revision, { status: active ? 'disabled' : 'active' })
@@ -31,6 +33,7 @@ async function toggle(id: AdminUserId, active: boolean, revision: number): Promi
   } catch (reason) { store.setError(reason, '用户状态更新失败') }
 }
 
+/** 重置密码并展示服务端一次性返回的临时密码。 */
 async function reset(id: AdminUserId, revision: number): Promise<void> {
   try {
     const result = await adminApi.resetPassword(id, revision)
@@ -48,6 +51,7 @@ async function resetQuota(id: AdminUserId): Promise<void> {
   } catch (reason) { store.setError(reason, '额度重置失败') }
 }
 
+/** 提交异步删除任务；实际数据清理由服务端后台作业完成。 */
 async function remove(id: AdminUserId, accountName: string): Promise<void> {
   if (!window.confirm(`确认删除账号“${accountName}”及其全部对话？`)) return
   try {
@@ -58,6 +62,7 @@ async function remove(id: AdminUserId, accountName: string): Promise<void> {
 }
 
 async function loadMore(): Promise<void> {
+  // 游标由服务端签发，客户端不解析，只在翻页时原样回传。
   const cursor = usersPage.value?.next_cursor
   if (!cursor) return
   await store.loadUsers({ cursor })

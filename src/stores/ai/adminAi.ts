@@ -23,19 +23,23 @@ export const useAdminAiStore = defineStore('adminAi', {
     errorCode: ''
   }),
   actions: {
+    /** 清除上一次管理请求留下的展示错误。 */
     clearError(): void {
       this.error = ''
       this.errorCode = ''
     },
+    /** 将未知异常归一化为后台页面可展示的消息和稳定错误码。 */
     setError(error: unknown, fallback: string): void {
       this.error = errorMessage(error, fallback)
       this.errorCode = error instanceof V2HttpError ? error.apiError.code : ''
     },
+    /** 加载后台总览用量和运行诊断。 */
     async loadUsage(): Promise<void> {
       this.loading = true
       this.clearError()
       try { this.usage = await adminApi.usage() } catch (error) { this.setError(error, '总览加载失败') } finally { this.loading = false }
     },
+    /** 加载一页用户及其当日用量。 */
     async loadUsers(options?: PageOptions): Promise<void> {
       this.loading = true
       this.clearError()
@@ -44,11 +48,13 @@ export const useAdminAiStore = defineStore('adminAi', {
         this.users = this.usersPage.users
       } catch (error) { this.setError(error, '用户加载失败') } finally { this.loading = false }
     },
+    /** 加载可编辑的全局 AI 设置。 */
     async loadSettings(): Promise<void> {
       this.loading = true
       this.clearError()
       try { this.settings = await adminApi.settings() } catch (error) { this.setError(error, '配置加载失败') } finally { this.loading = false }
     },
+    /** 加载一页不含用户内容的失败元数据。 */
     async loadFailures(options?: PageOptions): Promise<void> {
       this.loading = true
       this.clearError()
@@ -57,6 +63,7 @@ export const useAdminAiStore = defineStore('adminAi', {
         this.failures = this.failuresPage.items
       } catch (error) { this.setError(error, '失败日志加载失败') } finally { this.loading = false }
     },
+    /** 加载一页管理员操作审计记录。 */
     async loadAudits(options?: PageOptions): Promise<void> {
       this.loading = true
       this.clearError()

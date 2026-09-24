@@ -82,7 +82,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { usePoetryStore } from '@/store/poetry'
+import { usePoetryStore } from '@/stores/poetry'
 import { ArrowUpOutlined } from '@ant-design/icons-vue'
 import type { PoemContent } from '@/types/poetry'
 
@@ -94,6 +94,7 @@ const section = computed(() => poetryStore.poem.section)
 const content = computed<PoemContent>(() => poetryStore.poem.content)
 const showBackToTop = ref(false)
 
+// 阅读超过一个视口后才显示回到顶部按钮，减少正文区域视觉干扰。
 const handleScroll = () => {
   showBackToTop.value = window.scrollY > 420
 }

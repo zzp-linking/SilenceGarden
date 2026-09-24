@@ -1,10 +1,15 @@
 export interface OperatingSystem {
+  /** 是否按平板布局处理。 */
   isTablet: boolean
+  /** 是否按手机布局处理。 */
   isPhone: boolean
+  /** User-Agent 是否表示 Android。 */
   isAndroid: boolean
+  /** 是否按桌面布局处理。 */
   isPc: boolean
 }
 
+/** 根据 User-Agent 粗略判断布局所需的设备类别；不用于安全或能力检测。 */
 export const os = (): OperatingSystem => {
   const ua = navigator.userAgent
   const isWindowsPhone = /(?:Windows Phone)/.test(ua)

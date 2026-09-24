@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useAdminAiStore } from '@/stores/adminAi'
+import { useAdminAiStore } from '@/stores/ai/adminAi'
 
 const store = useAdminAiStore()
 const { audits, auditsPage, loading, error } = storeToRefs(store)
 const limit = ref(50)
 
+// 审计记录只在进入页面时加载，后续分页由用户显式触发。
 onMounted(() => { void store.loadAudits({ limit: limit.value }) })
 </script>
 

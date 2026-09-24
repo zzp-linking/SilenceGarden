@@ -91,7 +91,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, onBeforeRouteUpdate } from 'vue-router'
-import { useViolinStore } from '@/store/violin'
+import { useViolinStore } from '@/stores/violin'
 import { isPc } from '@/utils/tool'
 import { message } from '@/utils/talk'
 import { IMG, AUDIO } from '@/config/url'
