@@ -18,8 +18,9 @@ const app = createApp(App)
   .use(Antd)
 
 clientV2.setUnauthorizedHandler(() => {
-  // 刷新会话仍失败时统一清空用户，路由守卫会负责后续访问控制。
-  useUserStore().setUser(null)
+  // 刷新会话仍失败时统一完整退出；无登录身份时由页面自行处理 401。
+  const userStore = useUserStore()
+  if (userStore.isAuthenticated) userStore.expireSession()
 })
 
 app.mount('#app')

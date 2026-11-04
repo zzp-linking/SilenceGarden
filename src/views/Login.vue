@@ -32,6 +32,7 @@ import router from '@/router'
 import { useRoute } from 'vue-router'
 import type { FormInstance } from 'ant-design-vue'
 import type { LoginRequest } from '@/types/auth'
+import { safeReturnPath } from '@/features/auth/navigation'
 
 const userStore = useUserStore()
 const route = useRoute()
@@ -50,7 +51,7 @@ const rules = {
   ]
 }
 
-/** 登录成功后优先返回守卫记录的原始目标页。 */
+/** 登录成功后返回退出前的站内页面；普通路由守卫仍使用 redirect。 */
 const handleSubmit = async (): Promise<void> => {
   try {
     await formRef.value?.validate()
@@ -59,11 +60,17 @@ const handleSubmit = async (): Promise<void> => {
       password: form.password
     })
     if (res.user) {
+      const previousUserId = userStore.user?.id
       userStore.setSession(res)
-      const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') && !route.query.redirect.startsWith('//')
-        ? route.query.redirect
-        : '/'
-      void router.push(redirect)
+      const destination = safeReturnPath(router, route.query.backUrl)
+        ?? safeReturnPath(router, route.query.redirect)
+        ?? '/'
+      if (previousUserId && previousUserId !== res.user.id) {
+        // 直接在登录页从 A 切换到 B 时，也重建页面以清除 A 的全部内存缓存。
+        window.location.replace(router.resolve(destination).href)
+      } else {
+        void router.replace(destination)
+      }
     }
   } catch (error) {
     console.error('Login failed:', error)

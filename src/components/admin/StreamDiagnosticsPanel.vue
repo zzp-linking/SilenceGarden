@@ -33,58 +33,63 @@ const averageFirstTextMS = computed(() => {
 	return Math.round(props.diagnostics.first_text_latency_total_ms / props.diagnostics.first_text_events)
 })
 </script>
-
 <template>
-	<section class="stream-panel" aria-labelledby="stream-diagnostics-title">
-		<header class="stream-head">
-			<div>
-				<span class="stream-eyebrow">Redis-first SSE</span>
-				<h2 id="stream-diagnostics-title">流式连接诊断</h2>
-			</div>
-			<span class="process-note">进程重启后重新计数</span>
-		</header>
-		<div class="stream-grid">
-			<article><small>当前连接</small><strong>{{ diagnostics.current_connections }}</strong><span>累计 {{ diagnostics.total_connections }}</span></article>
-			<article><small>断点重连</small><strong>{{ diagnostics.reconnects }}</strong><span>从零回放 {{ diagnostics.replay_from_zero }}</span></article>
-			<article><small>回放事件</small><strong>{{ diagnostics.replayed_events }}</strong><span>请求 {{ diagnostics.replay_requests }}</span></article>
-			<article><small>慢连接断开</small><strong>{{ diagnostics.slow_connection_disconnects }}</strong><span>不阻塞其他连接</span></article>
-			<article><small>最长回放</small><strong>{{ diagnostics.replay_duration_max_ms }} ms</strong><span>平均 {{ averageReplayMS }} ms</span></article>
-			<article><small>首段文字延迟</small><strong>{{ diagnostics.first_text_latency_max_ms }} ms</strong><span>平均 {{ averageFirstTextMS }} ms</span></article>
-		</div>
-		<h3>Redis 事件写入</h3>
-		<div class="stream-grid write-grid">
-			<article><small>写入请求</small><strong>{{ diagnostics.redis_append_requests }}</strong><span>成功 {{ diagnostics.redis_append_successes }} · 失败 {{ diagnostics.redis_append_failures }}</span></article>
-			<article><small>实际新增事件</small><strong>{{ diagnostics.redis_appended_events }}</strong><span>{{ diagnostics.redis_appended_bytes }} 字节</span></article>
-			<article><small>最长写入</small><strong>{{ diagnostics.redis_append_duration_max_ms }} ms</strong><span>平均 {{ averageAppendMS }} ms</span></article>
-			<article><small>事件冲突</small><strong>{{ diagnostics.event_id_conflicts }}</strong><span>序号冲突 {{ diagnostics.public_sequence_conflicts }}</span></article>
-			<article><small>序号缺口</small><strong>{{ diagnostics.public_sequence_gaps }}</strong><span>容量超限 {{ diagnostics.capacity_exceeded }}</span></article>
-		</div>
-		<h3>最终保存与恢复</h3>
-		<div class="stream-grid finalization-grid">
-			<article><small>等待最终保存</small><strong>{{ diagnostics.pending_finalizations }}</strong><span>最久 {{ oldestPendingLabel }}</span></article>
-			<article><small>最终保存</small><strong>{{ diagnostics.finalization_successes }}</strong><span>请求 {{ diagnostics.finalization_requests }} · 失败 {{ diagnostics.finalization_failures }}</span></article>
-			<article><small>最终保存耗时</small><strong>{{ diagnostics.finalization_duration_max_ms }} ms</strong><span>平均 {{ averageFinalizationMS }} ms</span></article>
-			<article><small>消息写入失败</small><strong>{{ diagnostics.mongo_message_commit_failures }}</strong><span>请求 {{ diagnostics.mongo_message_commit_requests }}</span></article>
-			<article><small>Run 写入失败</small><strong>{{ diagnostics.mongo_run_commit_failures }}</strong><span>请求 {{ diagnostics.mongo_run_commit_requests }}</span></article>
-			<article><small>恢复结果</small><strong>{{ diagnostics.recovery_recovered }}</strong><span>候选 {{ diagnostics.recovery_candidates }} · 失败 {{ diagnostics.recovery_failed }}</span></article>
-			<article><small>中断恢复</small><strong>{{ diagnostics.recovery_interrupted }}</strong><span>数据丢失 {{ diagnostics.recovery_data_lost }}</span></article>
-			<article><small>停止请求</small><strong>{{ diagnostics.stop_successes }}</strong><span>请求 {{ diagnostics.stop_requests }} · 失败 {{ diagnostics.stop_failures }}</span></article>
-			<article><small>停止后拦截</small><strong>{{ diagnostics.post_stop_event_rejections }}</strong><span>Redis 硬分界线</span></article>
-		</div>
-	</section>
+  <a-card title="流式连接诊断" :bordered="false">
+    <template #extra><a-typography-text type="secondary">进程重启后重新计数</a-typography-text></template>
+    <a-collapse :default-active-key="['connections']" ghost>
+      <a-collapse-panel key="connections" header="连接与回放" force-render>
+        <a-row :gutter="[24, 24]">
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="当前连接" :value="diagnostics.current_connections" suffix="" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">累计 {{ diagnostics.total_connections }}</p></a-col>
+
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="断点重连" :value="diagnostics.reconnects" suffix="" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">从零回放 {{ diagnostics.replay_from_zero }}</p></a-col>
+
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="回放事件" :value="diagnostics.replayed_events" suffix="" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">请求 {{ diagnostics.replay_requests }}</p></a-col>
+
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="慢连接断开" :value="diagnostics.slow_connection_disconnects" suffix="" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">不阻塞其他连接</p></a-col>
+
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="最长回放" :value="diagnostics.replay_duration_max_ms" suffix="ms" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">平均 {{ averageReplayMS }} ms</p></a-col>
+
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="首段文字延迟" :value="diagnostics.first_text_latency_max_ms" suffix="ms" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">平均 {{ averageFirstTextMS }} ms</p></a-col>
+        </a-row>
+      </a-collapse-panel>
+      <a-collapse-panel key="redis" header="Redis 事件写入" force-render>
+        <a-row :gutter="[24, 24]">
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="写入请求" :value="diagnostics.redis_append_requests" suffix="" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">成功 {{ diagnostics.redis_append_successes }} · 失败 {{ diagnostics.redis_append_failures }}</p></a-col>
+
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="实际新增事件" :value="diagnostics.redis_appended_events" suffix="" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">{{ diagnostics.redis_appended_bytes }} 字节</p></a-col>
+
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="最长写入" :value="diagnostics.redis_append_duration_max_ms" suffix="ms" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">平均 {{ averageAppendMS }} ms</p></a-col>
+
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="事件冲突" :value="diagnostics.event_id_conflicts" suffix="" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">序号冲突 {{ diagnostics.public_sequence_conflicts }}</p></a-col>
+
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="序号缺口" :value="diagnostics.public_sequence_gaps" suffix="" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">容量超限 {{ diagnostics.capacity_exceeded }}</p></a-col>
+        </a-row>
+      </a-collapse-panel>
+      <a-collapse-panel key="finalization" header="最终保存与恢复" force-render>
+        <a-row :gutter="[24, 24]">
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="等待最终保存" :value="diagnostics.pending_finalizations" suffix="" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">最久 {{ oldestPendingLabel }}</p></a-col>
+
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="最终保存" :value="diagnostics.finalization_successes" suffix="" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">请求 {{ diagnostics.finalization_requests }} · 失败 {{ diagnostics.finalization_failures }}</p></a-col>
+
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="最终保存耗时" :value="diagnostics.finalization_duration_max_ms" suffix="ms" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">平均 {{ averageFinalizationMS }} ms</p></a-col>
+
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="消息写入失败" :value="diagnostics.mongo_message_commit_failures" suffix="" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">请求 {{ diagnostics.mongo_message_commit_requests }}</p></a-col>
+
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="Run 写入失败" :value="diagnostics.mongo_run_commit_failures" suffix="" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">请求 {{ diagnostics.mongo_run_commit_requests }}</p></a-col>
+
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="恢复结果" :value="diagnostics.recovery_recovered" suffix="" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">候选 {{ diagnostics.recovery_candidates }} · 失败 {{ diagnostics.recovery_failed }}</p></a-col>
+
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="中断恢复" :value="diagnostics.recovery_interrupted" suffix="" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">数据丢失 {{ diagnostics.recovery_data_lost }}</p></a-col>
+
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="停止请求" :value="diagnostics.stop_successes" suffix="" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">请求 {{ diagnostics.stop_requests }} · 失败 {{ diagnostics.stop_failures }}</p></a-col>
+
+          <a-col :xs="24" :sm="12" :xl="6"><a-statistic title="停止后拦截" :value="diagnostics.post_stop_event_rejections" suffix="" :value-style="{ fontSize: '22px' }" /><p class="diagnostic-note">Redis 硬分界线</p></a-col>
+        </a-row>
+      </a-collapse-panel>
+    </a-collapse>
+  </a-card>
 </template>
 
 <style scoped>
-.stream-panel { margin-top: 1.5rem; padding: 1.2rem; border: 1px solid #e0e8de; border-radius: 12px; background: #f9fbf8; }
-.stream-head { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
-.stream-head h2 { margin: .25rem 0 0; color: #31533e; font: 1.2rem 'STKaiti', serif; }
-.stream-panel h3 { margin: 1.2rem 0 .75rem; color: #52675a; font-size: .82rem; font-weight: 600; }
-.stream-eyebrow, .process-note { color: #89978b; font-size: .7rem; }
-.stream-eyebrow { letter-spacing: .12em; text-transform: uppercase; }
-.stream-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .75rem; }
-.stream-grid article { display: grid; gap: .35rem; min-width: 0; padding: .85rem; background: #fff; border-radius: 8px; }
-.stream-grid small, .stream-grid span { overflow: hidden; color: #89978b; font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
-.stream-grid strong { color: #31533e; font: 1.15rem ui-monospace, monospace; }
-@media (max-width: 900px) { .stream-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 520px) { .stream-head { align-items: start; flex-direction: column; } .stream-grid { grid-template-columns: 1fr; } }
+.diagnostic-note { margin: 8px 0 0; color: #8c8c8c; font-size: 13px; overflow-wrap: anywhere; }
 </style>

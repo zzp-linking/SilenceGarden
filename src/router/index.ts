@@ -17,6 +17,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/write', redirect: '/editor', meta: { auth: true, roles: ['admin'] } },
   { path: '/revise/:id', redirect: to => `/editor/${to.params.id}`, meta: { auth: true, roles: ['admin'] } },
   { path: '/article', name: 'ArticleCatalog', component: () => import('@/views/ArticleCatalog.vue') },
+  { path: '/article/collection/:id', name: 'ArticleCollection', component: () => import('@/views/ArticleCollection.vue') },
   { path: '/article/:id', name: 'Article', component: () => import('@/views/Article.vue') },
   { path: '/poetry', name: 'Poetry', component: () => import('@/views/Poetry.vue') },
   { path: '/poem/:title', name: 'Poem', component: () => import('@/views/Poem.vue') },
@@ -30,6 +31,7 @@ const routes: RouteRecordRaw[] = [
     meta: { auth: true, roles: ['admin'], layout: 'fullscreen' },
     children: [
       { path: '', name: 'AdminOverview', component: () => import('@/views/admin/AdminOverview.vue') },
+      { path: 'article-collections', name: 'AdminArticleCollections', component: () => import('@/views/admin/AdminArticleCollections.vue') },
       { path: 'users', name: 'AdminUsers', component: () => import('@/views/admin/AdminUsers.vue') },
       { path: 'ai-settings', name: 'AdminAiSettings', component: () => import('@/views/admin/AdminAiSettings.vue') },
       { path: 'ai-runs', name: 'AdminAiFailures', component: () => import('@/views/admin/AdminAiFailures.vue') },

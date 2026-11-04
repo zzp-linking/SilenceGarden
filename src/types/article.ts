@@ -1,5 +1,10 @@
 /** 文章目录页使用的轻量条目。 */
 export interface ArticleCatalogItem {
+  type?: 'article' | 'collection'
+  description?: string
+  articleCount?: number
+  time?: string
+  collectionId?: string | null
   /** MongoDB 文章记录 ID。 */
   _id: string
   /** 文章标题。 */
@@ -10,6 +15,9 @@ export interface ArticleCatalogItem {
 
 /** 文章阅读页使用的详情。 */
 export interface ArticleDetail {
+  collectionId?: string | null
+  collectionSync?: 'complete' | 'pending'
+  collection?: { _id: string; title: string; previous?: ArticleCatalogItem; next?: ArticleCatalogItem }
   /** MongoDB 文章记录 ID；空白初始对象中缺省。 */
   _id?: string
   /** 文章标题。 */
@@ -24,6 +32,7 @@ export interface ArticleDetail {
 
 /** 编辑器加载已有文章时使用的可编辑内容。 */
 export interface ArticleEditDetail {
+  collectionId?: string | null
   /** 编辑中的文章标题。 */
   title: string
   /** 编辑中的文章标签。 */
@@ -34,6 +43,9 @@ export interface ArticleEditDetail {
 
 /** 编辑器提交保存前收集的文章内容。 */
 export interface ArticleSaveInput {
+  requestId?: string
+  collectionId?: string | null
+  expectedCollectionId?: string | null
   /** 要保存的文章标题。 */
   title: string
   /** 要保存的文章标签。 */
@@ -44,9 +56,12 @@ export interface ArticleSaveInput {
   html: string
 }
 
+/** 保存目标由当前编辑动作决定，不从跨页面 Store 状态推断。 */
+export type ArticleSaveTarget = { mode: 'create' } | { mode: 'edit'; id: string }
+
 /** 发往保存接口的完整请求。 */
 export interface ArticleSaveRequest extends ArticleSaveInput {
-  /** 被修改文章的 ID；新建文章时由 Store 使用空字符串。 */
+  /** 被修改文章的 ID；新建文章时明确传空字符串。 */
   id: string
 }
 
@@ -67,5 +82,29 @@ export interface ArticleImageUploadInput {
 /** 创建供阅读页初始化使用的空文章。 */
 export const emptyArticleDetail = (): ArticleDetail => ({ title: '', tags: [], html: '' })
 
-/** 创建供编辑器初始化使用的空文章。 */
-export const emptyArticleEditDetail = (): ArticleEditDetail => ({ title: '', tags: [], markdown: '' })
+/** Book metadata and its authoritative reading-order snapshot. */
+export interface ArticleCollection {
+  _id: string
+  title: string
+  description: string
+  articleIds: string[]
+  articleCount: number
+  version: number
+  time: string
+  updateTime: string
+  items: ArticleCatalogItem[]
+}
+
+/** A stable receipt can be recovered without creating another article. */
+export interface ArticleWriteResult {
+  operationId?: string
+  state?: 'complete' | 'pending' | 'unknown' | 'failed'
+  id?: string
+  articleId?: string
+  updated?: boolean
+  matchedCount?: number
+  collectionId?: string | null
+  contentSaved?: boolean
+  contentState?: 'saved' | 'not_saved' | 'not_applicable' | 'unknown'
+  collectionSync?: 'complete' | 'pending' | 'unknown'
+}

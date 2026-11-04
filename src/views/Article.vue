@@ -10,7 +10,7 @@
       </router-link>
       <nav class="garden-page-nav" aria-label="页面导航">
         <span class="garden-page-label">二 · 札记 / READING</span>
-        <router-link to="/article" class="garden-page-link">返回文章目录</router-link>
+        <router-link :to="returnPath" class="garden-page-link">{{ article.collection ? '返回合集目录' : '返回文章目录' }}</router-link>
       </nav>
     </header>
 
@@ -20,11 +20,14 @@
           <span class="garden-stamp" aria-hidden="true">阅</span>
           <p class="garden-eyebrow">A NOTE IN PROGRESS</p>
           <p>阅读不是抵达答案，而是和一个念头多相处一会儿。</p>
-          <router-link to="/article" class="garden-text-link">← 文章目录</router-link>
+          <router-link :to="returnPath" class="garden-text-link">← {{ article.collection?.title || '文章目录' }}</router-link>
+          <router-link v-if="user.user?.role === 'admin'" :to="'/editor/' + route.params.id" class="garden-text-link">编辑文章</router-link>
         </aside>
 
         <article class="article-container">
           <header class="article-header">
+            <p v-if="readError" role="alert">{{ readError }} <button type="button" @click="reload++">重新加载</button></p>
+            <p v-if="article.collectionSync === 'pending'" role="status">合集目录正在同步，正文可以继续阅读。<button type="button" @click="reload++">重试导航</button></p>
             <p class="article-kicker">静谧花园 · 札记</p>
             <h1 class="title">{{ article.title || '文章载入中' }}</h1>
             <div v-if="article.tags && article.tags.length" class="tags">
@@ -43,6 +46,11 @@
             <span>此页读毕，仍可回到园中</span>
             <span class="article-footer-seal" aria-hidden="true">静</span>
           </footer>
+          <nav v-if="article.collection" class="article-chapters" aria-label="合集阅读顺序">
+            <RouterLink v-if="article.collection.previous" :to="'/article/' + article.collection.previous._id">上一篇 · {{ article.collection.previous.title }}</RouterLink>
+            <RouterLink :to="returnPath">合集目录</RouterLink>
+            <RouterLink v-if="article.collection.next" :to="'/article/' + article.collection.next._id">下一篇 · {{ article.collection.next.title }}</RouterLink>
+          </nav>
         </article>
       </div>
     </div>
@@ -68,10 +76,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, watch, shallowRef } from 'vue'
 import DOMPurify from 'dompurify'
 import { useRoute } from 'vue-router'
 import { useArticleStore } from '@/stores/article'
+import { useUserStore } from '@/stores/user'
 import { isPc } from '@/utils/tool'
 import Loading from '@/components/Loading.vue'
 import { ArrowUpOutlined } from '@ant-design/icons-vue'
@@ -81,12 +90,16 @@ import type { IdParams } from '@/types/api'
 
 const route = useRoute()
 const articleStore = useArticleStore()
+const user = useUserStore()
+const readError = shallowRef('')
+const reload = shallowRef(0)
 
 const modalImgOpen = ref(false)
 const modalImg = ref('')
 const showBackToTop = ref(false)
 
 const article = computed(() => articleStore.article)
+const returnPath = computed(() => article.value.collection ? '/article/collection/' + article.value.collection._id : '/article')
 const html = computed(() => DOMPurify.sanitize(articleStore.article.html || '', {
   USE_PROFILES: { html: true }
 }))
@@ -105,14 +118,20 @@ const scrollToTop = () => {
   })
 }
 
-onMounted(() => {
+watch(() => [route.params.id, reload.value], async (_value, _old, cleanup) => {
+  const controller = new AbortController()
+  cleanup(() => controller.abort())
+  readError.value = ''
   const idParam = route.params.id
   const id = Array.isArray(idParam) ? idParam[0] : idParam
   if (id) {
     const params: IdParams = { id }
-    articleStore.getArticleDetails(params)
+    try { await articleStore.getArticleDetails(params, controller.signal) }
+    catch (cause) { if (!controller.signal.aborted) readError.value = cause instanceof Error ? cause.message : '文章加载失败' }
   }
+}, { immediate: true })
 
+onMounted(() => {
   handleScroll()
   window.addEventListener('scroll', handleScroll, { passive: true })
 })
@@ -136,6 +155,8 @@ const contentClick = (event: MouseEvent): void => {
 .article-page {
   font-family: @poem;
 }
+.article-chapters { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; margin-top: 24px; }
+.article-chapters a { color: #315746; min-height: 44px; display: flex; align-items: center; overflow-wrap: anywhere; }
 
 .article-wrap {
   min-height: calc(100vh - 90px);
@@ -143,12 +164,13 @@ const contentClick = (event: MouseEvent): void => {
 
 .article-read-shell {
   display: grid;
-  grid-template-columns: minmax(180px, 0.35fr) minmax(0, 1fr);
-  gap: clamp(38px, 9vw, 150px);
+  // Equal outer columns keep the reading area centered independently of the side note.
+  grid-template-columns: minmax(0, 1fr) minmax(0, 860px) minmax(0, 1fr);
+  gap: 32px;
   align-items: start;
-  width: min(1280px, calc(100% - 72px));
+  width: min(1480px, calc(100% - 72px));
   margin: 0 auto;
-  padding: clamp(56px, 8vw, 110px) 0 120px;
+  padding: clamp(56px, 8vw, 90px) 0 120px;
 }
 
 .article-side-note {
@@ -170,6 +192,8 @@ const contentClick = (event: MouseEvent): void => {
 }
 
 .article-container {
+  grid-column: 2;
+  min-width: 0;
   min-height: 640px;
   padding: clamp(30px, 5vw, 78px) clamp(24px, 8vw, 110px) 42px;
   background: rgba(255, 255, 255, 0.38);
@@ -334,11 +358,10 @@ const contentClick = (event: MouseEvent): void => {
   }
 }
 
-@media only screen and (max-width: @threshold) {
+@media only screen and (max-width: 1360px) {
   .article-read-shell {
     display: block;
-    width: min(100% - 32px, 680px);
-    padding-top: 48px;
+    width: min(860px, calc(100% - 72px));
   }
 
   .article-side-note {
@@ -353,6 +376,16 @@ const contentClick = (event: MouseEvent): void => {
 
   .article-side-note p:not(.garden-eyebrow) {
     max-width: none;
+  }
+}
+
+@media only screen and (max-width: @threshold) {
+  .article-read-shell {
+    width: min(680px, calc(100% - 32px));
+    padding-top: 48px;
+  }
+
+  .article-side-note p:not(.garden-eyebrow) {
     font-size: 14px;
   }
 
@@ -387,7 +420,7 @@ const contentClick = (event: MouseEvent): void => {
 
 <style lang="less">
 .article-content-s {
-  .markdown-body {
+  &.markdown-body {
     background-color: transparent;
   }
   .hljs {

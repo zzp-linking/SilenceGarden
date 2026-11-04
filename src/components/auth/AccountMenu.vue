@@ -22,7 +22,11 @@ function toggle(): void {
 async function confirmLogout(): Promise<void> {
   // 先关闭浮层，避免退出期间菜单继续拦截页面交互。
   close()
-  await logout()
+  try {
+    await logout()
+  } catch {
+    toast.error('退出失败，请检查网络后重试')
+  }
 }
 
 function openPasswordDialog(): void {

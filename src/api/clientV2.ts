@@ -59,7 +59,7 @@ export class ClientV2 {
 
   private notifyUnauthorized(path: string): void {
     // 改密接口用 401 同时表示“旧密码错误”，不能据此清除仍然有效的登录态。
-    if (path === this.refreshPath || path === '/password/change') return
+    if (path === this.refreshPath || path === '/password/change' || path === '/login' || path === '/logout') return
     this.onUnauthorized?.()
   }
 

@@ -71,12 +71,15 @@ markdown.renderer.rules.link_open = (tokens, index, options, env, self) => {
   tokens[index]?.attrSet('rel', 'noopener noreferrer')
   return defaultLinkOpen ? defaultLinkOpen(tokens, index, options, env, self) : self.renderToken(tokens, index, options)
 }
-const defaultImage = markdown.renderer.rules.image
 markdown.renderer.rules.image = (tokens, index) => {
   const token = tokens[index]
-  const src = token?.attrGet('src') ?? ''
+  const src = String(token?.attrGet('src') ?? '')
   const alt = token?.content ?? '远程图片'
-  return safeLink(String(src)) ? `<a href="${src}" target="_blank" rel="noopener noreferrer">查看远程图片：${alt}</a>` : `<span>已隐藏不安全图片：${alt}</span>`
+  // alt 是模型或用户提供的文字，href 也必须按 HTML 属性转义；两者都不能直接拼进标签。
+  const safeAlt = markdown.utils.escapeHtml(alt)
+  return safeLink(src)
+    ? `<a href="${markdown.utils.escapeHtml(src)}" target="_blank" rel="noopener noreferrer">查看远程图片：${safeAlt}</a>`
+    : `<span>已隐藏不安全图片：${safeAlt}</span>`
 }
 
 type ContentSegment =
@@ -87,7 +90,8 @@ function sanitizeHtml(value: string): string {
   return DOMPurify.sanitize(value, {
     // KaTeX 默认同时生成可视 HTML 和用于无障碍阅读的 MathML。
     USE_PROFILES: { html: true, mathMl: true },
-    FORBID_TAGS: ['style', 'iframe', 'form', 'svg'],
+    // 即使未来有插件绕过自定义 image renderer，AI Markdown 也不能自动加载远程图片。
+    FORBID_TAGS: ['style', 'iframe', 'form', 'svg', 'img'],
     // KaTeX 的定位依赖受控的内联 style；原始 Markdown HTML 已由 html: false 转义。
     FORBID_ATTR: ['onerror', 'onclick', 'onload'],
     ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.-]+(?:[^a-z+.-]|$))/i

@@ -7,7 +7,6 @@ import type {
   AdminUserSummary,
   AiSettings,
   AuditLog,
-  DeletionJob,
   FailureLog,
   MetadataPage,
   QuotaOverride
@@ -59,7 +58,7 @@ export interface AdminApi {
   createUser(input: CreateUserInput): Promise<UserCommandResponse>
   updateUser(id: AdminUserId, revision: number, patch: UserPatchInput): Promise<UserCommandResponse>
   resetPassword(id: AdminUserId, revision: number): Promise<UserCommandResponse>
-  deleteUser(id: AdminUserId): Promise<DeletionJob>
+  deleteUser(id: AdminUserId): Promise<void>
   resetQuota(id: AdminUserId): Promise<void>
   settings(): Promise<AiSettings>
   updateSettings(revision: number, settings: AiSettings): Promise<AiSettings>
@@ -179,12 +178,6 @@ function isUserCommand(value: unknown): value is UserCommandResponse {
   return isRecord(value) && isAdminUser(value.user) && (value.temporary_password === undefined || typeof value.temporary_password === 'string')
 }
 
-function isDeletionJob(value: unknown): value is DeletionJob {
-  return isRecord(value) && typeof value.job_id === 'string' && typeof value.user_id === 'string' && typeof value.requested_by === 'string'
-    && typeof value.request_id === 'string' && ['queued', 'running', 'failed', 'completed'].includes(String(value.state))
-    && typeof value.stage === 'string' && isNumber(value.revision) && typeof value.created_at === 'string' && typeof value.updated_at === 'string'
-}
-
 function isFailure(value: unknown): value is FailureLog {
   return isRecord(value) && typeof value.request_id === 'string' && typeof value.run_id === 'string'
     && (value.identity_type === 'user' || value.identity_type === 'anonymous') && typeof value.stage === 'string'
@@ -240,8 +233,9 @@ export class HttpAdminApi implements AdminApi {
     return requestChecked(this.client, `/admin/users/${encodeURIComponent(id)}/reset-password`, isUserCommand, { method: 'POST', body: JSON.stringify({ revision }) })
   }
 
-  deleteUser(id: AdminUserId): Promise<DeletionJob> {
-    return requestChecked(this.client, `/admin/users/${encodeURIComponent(id)}`, isDeletionJob, { method: 'DELETE' })
+  async deleteUser(id: AdminUserId): Promise<void> {
+    // 服务端只有在全部数据库记录删除完成后才返回 204。
+    await this.client.request(`/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' })
   }
 
   async resetQuota(id: AdminUserId): Promise<void> {
@@ -277,7 +271,7 @@ function defaultSettings(): AiSettings {
     id: 'global', revision: 1, updated_by: 'mock', updated_at: new Date(0).toISOString(),
     service: { enabled: false, maintenance_message: '静语正在休息，历史仍可查看。' },
     quotas: {
-      global: { daily_micro_cny: 5_000_000, daily_rounds: 100, max_concurrent: 5, requests_per_minute: 30 },
+      global: { daily_micro_cny: 5_000_000, daily_rounds: 100, max_concurrent: 16, requests_per_minute: 30 },
       account_default: { daily_micro_cny: 1_000_000, daily_rounds: 30, max_concurrent: 2, requests_per_minute: 10 },
       anonymous_ip: { daily_micro_cny: 300_000, daily_rounds: 5, max_concurrent: 1, requests_per_minute: 3 },
       anonymous_device: { daily_micro_cny: 300_000, daily_rounds: 5, max_concurrent: 1, requests_per_minute: 3 }
@@ -328,10 +322,10 @@ export class MockAdminApi implements AdminApi {
     return { user: structuredClone(item.user), temporary_password: 'temporary-mock-password' }
   }
 
-  async deleteUser(id: AdminUserId): Promise<DeletionJob> {
+  async deleteUser(id: AdminUserId): Promise<void> {
     const index = this.data.findIndex(entry => entry.user.id === id)
-    if (index >= 0) this.data.splice(index, 1)
-    return { job_id: 'job-mock', user_id: id, requested_by: 'admin-1', request_id: 'req-mock', state: 'queued', stage: 'disable_user', revision: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+    if (index < 0 || this.data[index]?.user.status !== 'disabled') throw new Error('请先禁用账号')
+    this.data.splice(index, 1)
   }
 
   async resetQuota(_id: AdminUserId): Promise<void> {}

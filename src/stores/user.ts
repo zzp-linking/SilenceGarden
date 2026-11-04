@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia'
 import type { User } from '@/types/auth'
 import { authApi, mockAuthApi } from '@/api/auth'
+import { V2HttpError } from '@/api/clientV2'
 import { runTransportManager } from '@/features/ai/transport'
 import { runEventRenderScheduler } from '@/features/ai/streaming'
+import { navigateToLogin } from '@/features/auth/navigation'
 
 // 升级到 HttpOnly Cookie 后，主动移除旧版本遗留的可读 JWT。
 localStorage.removeItem('token')
@@ -36,7 +38,8 @@ export const useUserStore = defineStore('user', {
     user: readUser() as User | null,
     mustChangePassword: readMustChangePassword(),
     hydrated: false,
-    hydrating: false
+    hydrating: false,
+    exiting: false
   }),
   getters: {
     isAuthenticated: state => state.user !== null
@@ -102,19 +105,35 @@ export const useUserStore = defineStore('user', {
         return false
       }
     },
-    /** 无论服务端登出是否成功，都释放本地流连接和身份缓存。 */
+    /** 主动退出先让服务端清除 HttpOnly Cookie；失败时保留当前页面以便重试。 */
     async logout(): Promise<void> {
+      if (this.exiting) return
+      this.exiting = true
       try {
         await authApi.logout()
-      } finally {
-        runTransportManager.closeAll()
-        runEventRenderScheduler.closeAll('discard')
-        this.user = null
-        this.mustChangePassword = false
-        this.hydrated = true
-        localStorage.removeItem('user')
-        localStorage.removeItem('must_change_password')
+      } catch (error) {
+        if (!(error instanceof V2HttpError && error.status === 401)) {
+          this.exiting = false
+          throw error
+        }
+        // 服务端已认定会话无效，本地仍需完成退出。
       }
+      this.finishSessionExit()
+    },
+    /** 服务端已经拒绝凭证时，无需再等待登出接口，直接清理本标签页。 */
+    expireSession(): void {
+      if (this.exiting || !this.isAuthenticated) return
+      this.exiting = true
+      this.finishSessionExit()
+    },
+    /** 全局退出收尾：关闭旧流、清同源存储，再完整导航以释放全部内存状态。 */
+    finishSessionExit(): void {
+      runTransportManager.closeAll()
+      runEventRenderScheduler.closeAll('discard')
+      this.setUser(null)
+      localStorage.clear()
+      sessionStorage.clear()
+      navigateToLogin()
     }
   }
 })

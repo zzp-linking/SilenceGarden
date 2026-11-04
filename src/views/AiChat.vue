@@ -6,7 +6,7 @@
  * 匿名：POST /ai/anonymous/stream，对话存在 ephemeral-* 占位 ID，首帧 created 后换成服务端 ID。
  * workspaceEpoch 在登出时递增，丢弃进行中的 load/dispatch。
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { V2HttpError } from '@/api/clientV2'
@@ -145,7 +145,7 @@ async function dispatch(content: string, prepared: PreparedImage | undefined, op
 }
 /**
  * 用户提交入口。已有进行中的 Run 或服务关闭时直接忽略。
- * 若登录态刚过期，清掉 user 后按匿名再试一次。
+ * 若登录态已失效，使用全局退出入口回到登录页，避免旧账号结果混入匿名会话。
  */
 async function submit(content: string, prepared?: PreparedImage, operation: 'send' | 'regenerate' | 'edit_and_fork' = 'send', source?: UserMessage): Promise<void> {
   if (activeRun.value || serviceDisabled.value) return
@@ -153,15 +153,8 @@ async function submit(content: string, prepared?: PreparedImage, operation: 'sen
     await dispatch(content, prepared, operation, source)
   } catch (error) {
     if (isAuthFailure(error)) {
-      userStore.setUser(null)
-      await nextTick()
-      try {
-        await dispatch(content, prepared, 'send')
-        return
-      } catch (retryError) {
-        toast.error(displayError(retryError, '发送失败，请稍后再试'))
-        return
-      }
+      userStore.expireSession()
+      return
     }
     toast.error(displayError(error, '发送失败，请稍后再试'))
   }
@@ -369,7 +362,7 @@ async function load(): Promise<void> {
   } catch (error) {
     if (epoch !== workspaceEpoch) return
     if (isAuthFailure(error)) {
-      userStore.setUser(null)
+      userStore.expireSession()
       return
     }
     toast.error(displayError(error, '历史加载失败，请稍后再试'))

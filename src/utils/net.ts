@@ -1,8 +1,15 @@
 import axios, { type AxiosError, type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios'
-import router from '@/router'
 import { useUserStore } from '@/stores/user'
 import { message } from '@/utils/talk'
 import type { ApiResponse } from '@/types/api'
+
+/** Preserve a named business error and its partial-save receipt. */
+export class ApiError extends Error {
+  constructor(public readonly code: number | boolean | string, message: string, public readonly result: unknown) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -33,16 +40,18 @@ service.interceptors.response.use(
     // 101 是旧接口约定的会话失效码，需要同时清理本地身份并回到登录页。
     if (result.code === 101) {
       message(result.message, 4)
-      useUserStore().logout()
-      void router.push('/login')
+      useUserStore().expireSession()
     } else if (result.message) {
       message(result.message, 4)
     }
-    return Promise.reject(new Error(result.message || '请求失败'))
+    return Promise.reject(new ApiError(result.code, result.message || '请求失败', result.result))
   },
-  (error: AxiosError<{ message?: string }>) => {
+  (error: AxiosError<Partial<ApiResponse<unknown>>>) => {
+    // 切换文章时主动取消旧详情请求，不向用户显示无意义的“已取消”错误。
+    if (axios.isCancel(error)) return Promise.reject(error)
     const errorMessage = error.response?.data?.message || error.message
     message(errorMessage, 4)
+    if (error.response?.data?.code !== undefined) return Promise.reject(new ApiError(error.response.data.code, errorMessage, error.response.data.result))
     return Promise.reject(error)
   }
 )
@@ -50,9 +59,14 @@ service.interceptors.response.use(
 export interface NetClient {
   get<T>(url: string, config?: AxiosRequestConfig): Promise<T>
   post<T, D = unknown>(url: string, data?: D, config?: AxiosRequestConfig): Promise<T>
+  request<T, D = unknown>(method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', url: string, data: D): Promise<T>
 }
 
 const net: NetClient = {
+  async request<T, D = unknown>(method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', url: string, data: D) {
+    const response = await service.request<ApiResponse<unknown>>({ method, url, data })
+    return unwrap<T>(response.data)
+  },
   async get<T>(url: string, config?: AxiosRequestConfig) {
     const response = await service.get<ApiResponse<unknown>>(url, config)
     return unwrap<T>(response.data)

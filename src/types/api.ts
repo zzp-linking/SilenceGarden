@@ -1,7 +1,7 @@
 /** 旧版通用 API 的成功响应信封。 */
 export interface ApiResponse<T> {
   /** 业务状态码；旧接口可能使用数字或布尔值。 */
-  code: number | boolean
+  code: number | boolean | string
   /** 服务端返回的提示信息。 */
   message: string
   /** 接口返回的业务结果。 */
@@ -17,11 +17,11 @@ export interface ApiListResult<T> {
 /** 旧版 API 的失败响应。 */
 export interface ApiErrorResult {
   /** 失败状态码；101 和 false 是旧接口保留值。 */
-  code: 101 | false | number
+  code: 101 | false | number | string
   /** 可展示或记录的错误信息。 */
   message: string
-  /** 失败时固定为空对象的结果字段。 */
-  result: Record<string, never>
+  /** 新文章接口也会携带可恢复的部分保存结果。 */
+  result: Record<string, unknown>
 }
 
 /** 按资源 ID 请求详情或执行操作时使用的路径参数。 */

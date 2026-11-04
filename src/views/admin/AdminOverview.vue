@@ -1,60 +1,44 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useAdminAiStore } from '@/stores/ai/adminAi'
+import { ReloadOutlined } from '@ant-design/icons-vue'
+import { formatAdminTime, formatAdminDate } from '@/utils/adminDisplay'
+import { adminApi } from '@/api/admin'
+import { useAdminResource } from '@/composables/useAdminResource'
 import { microCnyToYuan } from '@/utils/microCny'
 import StreamDiagnosticsPanel from '@/components/admin/StreamDiagnosticsPanel.vue'
-
-const store = useAdminAiStore()
-const { usage, loading, error } = storeToRefs(store)
+const { data: usage, loading, error, load } = useAdminResource(() => adminApi.usage())
 let timer: ReturnType<typeof setInterval> | undefined
-const actualYuan = computed(() => usage.value ? microCnyToYuan(usage.value.global.actual_micro_cny) : '0')
-
-// 总览属于运维视图，页面停留期间每十秒刷新一次累计指标。
-onMounted(() => { void store.loadUsage(); timer = setInterval(() => { void store.loadUsage() }, 10_000) })
-// 离开后台总览后停止轮询，避免隐藏页面继续请求。
+const metrics = computed(() => usage.value ? [
+  { title: '今日实际费用', value: microCnyToYuan(usage.value.global.actual_micro_cny), prefix: '¥', note: '统计日期 ' + formatAdminDate(usage.value.date) },
+  { title: '回答轮数', value: usage.value.global.answer_rounds, note: '活跃任务 ' + usage.value.active_runs },
+  { title: 'Token 用量', value: usage.value.global.tokens.output + usage.value.global.tokens.input_cache_hit + usage.value.global.tokens.input_cache_miss, note: '思考 Token ' + usage.value.global.tokens.reasoning },
+  { title: '当前预占', value: usage.value.active_reservations, note: '今日失败 ' + usage.value.global.failure_count }
+] : [])
+onMounted(() => { void load(); timer = setInterval(() => { if (!document.hidden) void load() }, 10_000) })
 onBeforeUnmount(() => { if (timer) clearInterval(timer) })
 </script>
-
 <template>
   <section class="admin-page">
-    <header class="page-head">
-      <div><span class="eyebrow">静语 · 管理</span><h1>服务总览</h1></div>
-      <span class="service-state" :class="{ off: !usage?.readiness.ready }">{{ usage?.readiness.ready ? '● 依赖就绪' : '○ 依赖未就绪' }}</span>
-    </header>
-    <p v-if="loading">正在读取聚合数据……</p>
-    <p v-if="error" class="error">{{ error }}</p>
+    <header class="admin-page-head"><div><h1 class="admin-page-title">服务总览</h1><p class="admin-page-description">查看今日用量、依赖状态与流式运行指标。每 10 秒自动更新。</p></div><a-button :loading="loading" @click="load"><template #icon><ReloadOutlined /></template>刷新</a-button></header>
+    <a-alert v-if="error" type="error" show-icon :message="error" />
+    <a-skeleton v-if="!usage && loading" active :paragraph="{ rows: 6 }" />
     <template v-if="usage">
-      <div class="metric-grid">
-        <article><small>今日实际费用</small><strong>¥{{ actualYuan }}</strong><span>日期 {{ usage.date }}</span></article>
-        <article><small>回答轮数</small><strong>{{ usage.global.answer_rounds }}</strong><span>活跃 run {{ usage.active_runs }}</span></article>
-        <article><small>Tokens</small><strong>{{ usage.global.tokens.output + usage.global.tokens.input_cache_hit + usage.global.tokens.input_cache_miss }}</strong><span>思考 {{ usage.global.tokens.reasoning }}</span></article>
-        <article><small>预占与失败</small><strong>{{ usage.active_reservations }}</strong><span>失败 {{ usage.global.failure_count }}</span></article>
-      </div>
-		<div class="readiness">
-        <h2>依赖就绪</h2>
-        <span :class="{ good: usage.readiness.ready }">{{ usage.readiness.ready ? 'Mongo / Redis / RunManager 正常' : `失败：${usage.readiness.failed?.join('、') || '未知'}` }}</span>
-		</div>
-		<StreamDiagnosticsPanel :diagnostics="usage.stream" />
+      <a-row :gutter="[16, 16]"><a-col v-for="metric in metrics" :key="metric.title" :xs="24" :sm="12" :xl="6"><a-card :bordered="false"><a-statistic :title="metric.title" :value="metric.value" :prefix="metric.prefix" /><p class="metric-note">{{ metric.note }}</p></a-card></a-col></a-row>
+      <a-card title="服务状态" :bordered="false">
+        <template #extra><a-badge :status="usage.readiness.ready ? 'success' : 'error'" :text="usage.readiness.ready ? '依赖就绪' : '依赖未就绪'" /></template>
+        <a-alert v-if="!usage.readiness.ready" type="error" show-icon :message="'未就绪依赖：' + (usage.readiness.failed?.join('、') || '未知')" class="readiness-alert" />
+        <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }">
+          <a-descriptions-item label="依赖检查">{{ usage.readiness.ready ? 'Mongo / Redis / RunManager 正常' : '存在异常' }}</a-descriptions-item>
+          <a-descriptions-item label="活跃任务">{{ usage.active_runs }}</a-descriptions-item>
+          <a-descriptions-item label="最近更新">{{ formatAdminTime(usage.global.updated_at) }}</a-descriptions-item>
+        </a-descriptions>
+      </a-card>
+      <StreamDiagnosticsPanel :diagnostics="usage.stream" />
     </template>
+    <a-empty v-else-if="!loading && !error" description="暂无服务数据" />
   </section>
 </template>
-
 <style scoped>
-.admin-page { max-width: 1000px; }
-.page-head { display: flex; justify-content: space-between; align-items: end; margin-bottom: 2rem; }
-.eyebrow { color: #8a9b8c; font-size: .7rem; letter-spacing: .15em; }
-.page-head h1 { margin: .4rem 0 0; font: 2.2rem 'STKaiti', serif; color: #31533e; }
-.service-state { padding: .6rem .8rem; border: 1px solid #a7c0aa; border-radius: 20px; color: #477458; font-size: .78rem; }
-.service-state.off { border-color: #d4b3b3; color: #936565; }
-.metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
-.metric-grid article { display: grid; gap: .65rem; padding: 1.2rem; border: 1px solid #e0e8de; border-radius: 12px; background: #fff; }
-.metric-grid small, .metric-grid span { color: #89978b; font-size: .72rem; }
-.metric-grid strong { color: #31533e; font: 1.8rem ui-monospace, monospace; }
-.readiness { display: flex; gap: 1rem; align-items: center; margin-top: 2rem; padding: 1rem; border-top: 1px solid #e0e8de; }
-.readiness h2 { margin: 0; font: 1.2rem 'STKaiti', serif; }
-.readiness span { color: #9a7777; font-size: .78rem; }
-.readiness span.good { color: #477458; }
-.error { color: #966565; }
-@media (max-width: 780px) { .metric-grid { grid-template-columns: repeat(2, 1fr); } }
+.metric-note { margin: 12px 0 0; color: #8c8c8c; font-size: 13px; }
+.readiness-alert { margin-bottom: 16px; }
 </style>

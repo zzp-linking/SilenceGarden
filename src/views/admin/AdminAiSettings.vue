@@ -1,91 +1,88 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { storeToRefs } from 'pinia'
+import { computed, onMounted, shallowRef } from 'vue'
+import { App } from 'ant-design-vue'
+import { ReloadOutlined } from '@ant-design/icons-vue'
 import { V2HttpError } from '@/api/clientV2'
 import { adminApi } from '@/api/admin'
 import AdminSettingsForm from '@/components/admin/AdminSettingsForm.vue'
 import type { AiSettings } from '@/types/admin'
-import { useAdminAiStore } from '@/stores/ai/adminAi'
-
-const store = useAdminAiStore()
-const { settings, loading, error, errorCode } = storeToRefs(store)
-const notice = ref('')
+import { adminError, useAdminResource } from '@/composables/useAdminResource'
+const { message } = App.useApp()
+const { data: settings, loading, error, load } = useAdminResource<AiSettings>(readSettings)
+const saving = shallowRef(false)
+const switching = shallowRef(false)
+const actionError = shallowRef('')
 const enabled = computed(() => settings.value?.service.enabled === true)
+const writing = computed(() => saving.value || switching.value)
+let readTask: Promise<boolean> | undefined
 
-function displayError(fallback: string, reason: unknown): string {
-  if (reason instanceof V2HttpError) return `${reason.apiError.code}：${reason.message}`
-  return reason instanceof Error ? reason.message : fallback
-}
-
-async function load(): Promise<void> {
-  notice.value = ''
-  await store.loadSettings()
-}
-
-/** 保存完整配置；版本冲突时重新加载服务端最新修订。 */
-async function save(next: AiSettings): Promise<void> {
-  notice.value = ''
-  try {
-    store.settings = await adminApi.updateSettings(next.revision, next)
-    notice.value = '完整 settings 已保存，revision 已更新。'
-  } catch (reason) {
-    notice.value = displayError('配置保存失败', reason)
-    if (reason instanceof V2HttpError && reason.apiError.code === 'SETTINGS_VERSION_CONFLICT') await load()
-  }
-}
-
-/** 开关 AI 服务；关闭只阻止新任务，不中断已经开始的回答。 */
-async function toggle(): Promise<void> {
+async function readSettings(): Promise<AiSettings> {
+  const next = await adminApi.settings()
   const current = settings.value
-  if (!current) return
-  const message = current.service.maintenance_message || '静语正在休息，历史仍可查看。'
-  const wasEnabled = enabled.value
-  if (wasEnabled && !window.confirm('关闭后新的模型请求会被拒绝，已开始的回答仍将完成。')) return
-  notice.value = ''
-  try {
-    if (wasEnabled) await adminApi.disable(current.revision, message)
-    else await adminApi.enable(current.revision)
-    await load()
-    notice.value = wasEnabled ? '服务已关闭。' : '服务已开启。'
-  } catch (reason) {
-    notice.value = displayError('服务开关操作失败', reason)
-    if (reason instanceof V2HttpError && reason.apiError.code === 'SETTINGS_VERSION_CONFLICT') await load()
-  }
+  // Keep the existing snapshot when a reload returns the same JSON settings.
+  return current && JSON.stringify(current) === JSON.stringify(next) ? current : next
 }
 
-onMounted(() => { void load() })
-</script>
+function reload(): Promise<boolean> {
+  if (!readTask) readTask = load().finally(() => { readTask = undefined })
+  return readTask
+}
 
+async function handleError(reason: unknown) {
+  if (reason instanceof V2HttpError && reason.apiError.code === 'SETTINGS_VERSION_CONFLICT') {
+    const reloaded = await reload()
+    actionError.value = reloaded ? '设置已被其他操作修改，已重新加载最新版本，请检查后再次保存。' : '设置版本冲突，重新读取失败，请重新加载后再保存。'
+  } else actionError.value = adminError(reason)
+}
+async function save(next: AiSettings) {
+  if (writing.value) return
+  saving.value = true; actionError.value = ''
+  try {
+    // Finish an in-flight read before writing; the draft's revision still protects against conflicts.
+    if (readTask && !await readTask) return
+    settings.value = await adminApi.updateSettings(next.revision, next)
+    message.success('全部设置已保存')
+  }
+  catch (reason) { await handleError(reason) }
+  finally { saving.value = false }
+}
+async function toggle() {
+  if (!settings.value || writing.value) return
+  switching.value = true; actionError.value = ''
+  const wasEnabled = enabled.value
+  try {
+    if (readTask && !await readTask) return
+    if (enabled.value !== wasEnabled) {
+      message.info(wasEnabled ? 'AI 服务已经关闭' : 'AI 服务已经开启')
+      return
+    }
+    if (wasEnabled) await adminApi.disable(settings.value.revision, settings.value.service.maintenance_message || '静语正在休息，历史仍可查看。')
+    else await adminApi.enable(settings.value.revision)
+    await reload()
+    message.success(wasEnabled ? 'AI 服务已关闭' : 'AI 服务已开启')
+  } catch (reason) { await handleError(reason) }
+  finally { switching.value = false }
+}
+onMounted(reload)
+</script>
 <template>
   <section class="admin-page">
-    <header class="page-head">
-      <div><span class="eyebrow">可控边界</span><h1>AI 设置</h1></div>
-      <span class="revision">revision {{ settings?.revision ?? '—' }}</span>
-    </header>
-    <div class="service-card">
-      <div><strong>{{ enabled ? '服务开启' : '服务关闭' }}</strong><p>{{ settings?.service.maintenance_message || '本地数据库尚未读取设置。' }}</p></div>
-      <button type="button" :class="{ enabled }" :disabled="!settings || loading" @click="toggle">{{ enabled ? '关闭服务' : '开启服务' }}</button>
-    </div>
-    <p v-if="error || errorCode" class="error">{{ error }}</p>
-    <p v-if="notice" class="notice">{{ notice }}</p>
-    <p v-if="!settings && loading" class="hint">正在读取完整 settings……</p>
-    <AdminSettingsForm v-if="settings" :settings="settings" :busy="loading" @save="save" />
+    <header class="admin-page-head"><div><h1 class="admin-page-title">AI 设置</h1><p class="admin-page-description">配置服务、配额、模型与运行策略。</p></div><a-button :loading="loading" :disabled="writing" @click="actionError = ''; reload()"><template #icon><ReloadOutlined /></template>重新加载</a-button></header>
+    <a-alert v-if="error || actionError" type="error" show-icon :message="error || actionError" />
+    <a-card :bordered="false">
+      <div class="service-status">
+        <div><a-space><strong>AI 服务</strong><a-badge :status="settings ? enabled ? 'success' : 'default' : 'processing'" :text="settings ? enabled ? '运行中' : '已关闭' : '读取中'" /></a-space><p class="service-note">{{ enabled ? '服务已开启，可接收新的模型请求。' : settings?.service.maintenance_message || '关闭服务后仍可查看历史记录。' }}</p></div>
+        <a-popconfirm :title="enabled ? '确认关闭 AI 服务？' : '确认开启 AI 服务？'" :description="enabled ? '新的模型请求将被拒绝，已经开始的回答仍会完成。' : '开启后允许新的模型请求。'" @confirm="toggle"><a-button :danger="enabled" :type="enabled ? 'default' : 'primary'" :loading="switching" :disabled="!settings || saving">{{ enabled ? '关闭服务' : '开启服务' }}</a-button></a-popconfirm>
+      </div>
+    </a-card>
+    <a-card title="全局配置" :bordered="false" :loading="!settings && loading">
+      <template #extra><a-tag v-if="settings">版本 {{ settings.revision }}</a-tag></template>
+      <AdminSettingsForm v-if="settings" :settings="settings" :busy="writing" @save="save" />
+      <a-empty v-else-if="!loading" description="配置尚未读取，请重新加载" />
+    </a-card>
   </section>
 </template>
-
 <style scoped>
-.admin-page { max-width: 1120px; }
-.page-head { display: flex; justify-content: space-between; align-items: end; gap: 1rem; }
-.eyebrow { color: #8a9b8c; font-size: .7rem; letter-spacing: .15em; }
-.admin-page h1 { margin: .4rem 0 1.8rem; font: 2.2rem 'STKaiti', serif; color: #31533e; }
-.revision { color: #8a998c; font: .75rem ui-monospace, monospace; }
-.service-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.2rem; border: 1px solid #e0e8de; border-radius: 12px; background: #fff; }
-.service-card strong { color: #31533e; }
-.service-card p { margin: .4rem 0 0; color: #8a998c; font-size: .78rem; }
-.service-card button { padding: .65rem .9rem; border: 1px solid #d4b4b4; border-radius: 8px; background: #fff; color: #946666; cursor: pointer; }
-.service-card button.enabled { border-color: #d4b4b4; background: #fff; }
-.service-card button:disabled { cursor: wait; opacity: .6; }
-.notice { color: #477458; }
-.error { color: #966565; white-space: pre-wrap; }
-.hint { color: #8a998c; }
+.service-status { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+.service-note { margin: 8px 0 0; color: #8c8c8c; }
 </style>

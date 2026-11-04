@@ -1,41 +1,38 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useAdminAiStore } from '@/stores/ai/adminAi'
-
-const store = useAdminAiStore()
-const { audits, auditsPage, loading, error } = storeToRefs(store)
-const limit = ref(50)
-
-// 审计记录只在进入页面时加载，后续分页由用户显式触发。
-onMounted(() => { void store.loadAudits({ limit: limit.value }) })
+import { computed, onMounted } from 'vue'
+import { ReloadOutlined } from '@ant-design/icons-vue'
+import type { AuditLog } from '@/types/admin'
+import { formatAdminTime } from '@/utils/adminDisplay'
+import { adminApi } from '@/api/admin'
+import { useAdminCursorPage } from '@/composables/useAdminResource'
+const page = useAdminCursorPage(options => adminApi.auditLogs(options))
+const { data, loading, error, index } = page
+const rows = computed(() => data.value?.items || [])
+const columns = [
+  { title: '时间', dataIndex: 'created_at', key: 'time', width: 200 },
+  { title: '操作', dataIndex: 'action', key: 'action', width: 220 },
+  { title: '目标', key: 'target', width: 240 },
+  { title: 'Request ID', dataIndex: 'request_id', key: 'request', width: 240 },
+  { title: '变更字段', key: 'changes', width: 260 }
+]
+onMounted(page.first)
 </script>
-
 <template>
   <section class="admin-page">
-    <header>
-      <span class="eyebrow">只保留变更元数据</span>
-      <h1>审计日志</h1>
-    </header>
-    <p class="privacy">不展示密码、API key、prompt、answer 或图片内容。</p>
-    <p v-if="error" class="error">{{ error }}</p>
-    <table>
-      <thead><tr><th>时间</th><th>操作</th><th>目标</th><th>request ID</th><th>变更</th></tr></thead>
-      <tbody>
-        <tr v-for="item in audits" :key="`${item.request_id}-${item.created_at}`">
-          <td>{{ item.created_at }}</td>
-          <td>{{ item.action }}</td>
-          <td>{{ item.target_type }}{{ item.target_id ? ` / ${item.target_id}` : '' }}</td>
-          <td>{{ item.request_id }}</td>
-          <td>{{ item.changes?.map(change => change.field).join('、') || '—' }}</td>
-        </tr>
-      </tbody>
-    </table>
-    <p v-if="loading">正在读取……</p>
-    <button v-if="auditsPage?.next_cursor" type="button" @click="store.loadAudits({ cursor: auditsPage.next_cursor, limit: limit })">加载下一页</button>
+    <header class="admin-page-head"><div><h1 class="admin-page-title">审计日志</h1><p class="admin-page-description">追踪管理员操作与配置变更。</p></div><a-button :loading="loading" @click="page.reload"><template #icon><ReloadOutlined /></template>刷新</a-button></header>
+    <a-alert type="info" show-icon message="仅展示变更元数据，不包含密码、API Key、提问、回答或图片内容。" />
+    <a-alert v-if="error" type="error" show-icon :message="error" />
+    <a-card :bordered="false">
+      <a-table :columns="columns" :data-source="rows" :row-key="(item: AuditLog) => item.request_id + '-' + item.created_at + '-' + item.action + '-' + (item.target_id || '')" :loading="loading" :pagination="false" :scroll="{ x: 1160 }">
+        <template #bodyCell="{ column, record, text }">
+          <template v-if="column.key === 'time'">{{ formatAdminTime(record.created_at) }}</template>
+          <template v-else-if="column.key === 'action'"><a-tag>{{ text }}</a-tag></template>
+          <template v-else-if="column.key === 'target'">{{ record.target_type }}<div v-if="record.target_id" class="admin-muted admin-mono">{{ record.target_id }}</div></template>
+          <template v-else-if="column.key === 'request'"><a-typography-text copyable class="admin-mono">{{ text }}</a-typography-text></template>
+          <template v-else-if="column.key === 'changes'"><a-space v-if="record.changes?.length" wrap :size="[4, 4]"><a-tag v-for="change in record.changes" :key="change.field">{{ change.field }}</a-tag></a-space><span v-else>—</span></template>
+        </template>
+      </a-table>
+      <div class="admin-pagination"><span class="admin-muted">第 {{ index + 1 }} 页</span><a-button :disabled="index === 0 || loading" @click="page.previous">上一页</a-button><a-button :disabled="!data?.next_cursor || loading" @click="page.next">下一页</a-button></div>
+    </a-card>
   </section>
 </template>
-
-<style scoped>
-.admin-page{max-width:1100px}.eyebrow{color:#8a9b8c;font-size:.7rem;letter-spacing:.15em}.admin-page h1{margin:.4rem 0 1.8rem;font:2.2rem 'STKaiti',serif;color:#31533e}.privacy{color:#8c998e;font-size:.75rem}.error{color:#966565}table{width:100%;margin-top:1.4rem;border-collapse:collapse;background:#fff}th,td{padding:.8rem;border-bottom:1px solid #edf1eb;text-align:left;font-size:.78rem;vertical-align:top}th{color:#8a998c;font-weight:500}button{margin-top:1rem;padding:.6rem .9rem;border:1px solid #9ebaa1;border-radius:8px;background:#477458;color:#fff}
-</style>

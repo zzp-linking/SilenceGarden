@@ -1,9 +1,39 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useAdminAiStore } from '@/stores/ai/adminAi'
-const store = useAdminAiStore(); const { failures, failuresPage, loading, error } = storeToRefs(store); const limit = ref(50)
-onMounted(() => { void store.loadFailures() })
+import { computed, onMounted } from 'vue'
+import { ReloadOutlined } from '@ant-design/icons-vue'
+import type { FailureLog } from '@/types/admin'
+import { formatAdminTime } from '@/utils/adminDisplay'
+import { adminApi } from '@/api/admin'
+import { useAdminCursorPage } from '@/composables/useAdminResource'
+const page = useAdminCursorPage(options => adminApi.failures(options))
+const { data, loading, error, index } = page
+const rows = computed(() => data.value?.items || [])
+const columns = [
+  { title: '时间', dataIndex: 'created_at', key: 'time', width: 200 },
+  { title: '错误码', dataIndex: 'error_code', key: 'code', width: 210 },
+  { title: '阶段', dataIndex: 'stage', width: 120 },
+  { title: '模型', dataIndex: 'model', width: 230 },
+  { title: '可重试', key: 'retryable', width: 100 },
+  { title: '供应商 Request ID', dataIndex: 'provider_request_id', key: 'provider', width: 240 },
+  { title: '本地 Request ID', dataIndex: 'request_id', key: 'request', width: 240 }
+]
+onMounted(page.first)
 </script>
-<template><section class="admin-page"><header><span class="eyebrow">只保留元数据</span><h1>失败日志</h1></header><p class="privacy">这里不展示 prompt、answer、图片或供应商原始响应。</p><p v-if="error" class="error">{{ error }}</p><table><thead><tr><th>时间</th><th>错误码</th><th>阶段</th><th>模型</th><th>可重试</th><th>供应商 request ID</th><th>本地 request ID</th></tr></thead><tbody><tr v-for="item in failures" :key="`${item.request_id}-${item.created_at}`"><td>{{ item.created_at }}</td><td>{{ item.error_code }}</td><td>{{ item.stage }}</td><td>{{ item.model }}</td><td>{{ item.retryable ? '是' : '否' }}</td><td>{{ item.provider_request_id || '—' }}</td><td>{{ item.request_id }}</td></tr></tbody></table><p v-if="loading">正在读取……</p><button v-if="failuresPage?.next_cursor" type="button" @click="store.loadFailures({ cursor: failuresPage.next_cursor, limit })">加载下一页</button></section></template>
-<style scoped>.admin-page{max-width:1000px}.eyebrow{color:#8a9b8c;font-size:.7rem;letter-spacing:.15em}.admin-page h1{margin:.4rem 0 1.8rem;font:2.2rem 'STKaiti',serif;color:#31533e}.search{display:flex;gap:.5rem;margin-bottom:1rem}.search input{flex:1;max-width:360px;padding:.7rem;border:1px solid #dce5da;border-radius:8px}.search button{padding:.6rem .9rem;border:1px solid #9ebaa1;border-radius:8px;background:#477458;color:#fff}.privacy{color:#8c998e;font-size:.75rem}table{width:100%;margin-top:1.4rem;border-collapse:collapse;background:#fff}th,td{padding:.8rem;border-bottom:1px solid #edf1eb;text-align:left;font-size:.78rem}th{color:#8a998c;font-weight:500}.error{color:#966565}</style>
+<template>
+  <section class="admin-page">
+    <header class="admin-page-head"><div><h1 class="admin-page-title">失败日志</h1><p class="admin-page-description">查看模型请求的错误码、失败阶段与追踪标识。</p></div><a-button :loading="loading" @click="page.reload"><template #icon><ReloadOutlined /></template>刷新</a-button></header>
+    <a-alert type="info" show-icon message="仅展示运行元数据，不包含提问、回答、图片或供应商原始响应。" />
+    <a-alert v-if="error" type="error" show-icon :message="error" />
+    <a-card :bordered="false">
+      <a-table :columns="columns" :data-source="rows" :row-key="(item: FailureLog) => item.request_id + '-' + item.created_at" :loading="loading" :pagination="false" :scroll="{ x: 1340 }">
+        <template #bodyCell="{ column, record, text }">
+          <template v-if="column.key === 'time'">{{ formatAdminTime(record.created_at) }}</template>
+          <template v-else-if="column.key === 'code'"><a-tag color="error">{{ text }}</a-tag></template>
+          <template v-else-if="column.key === 'retryable'"><a-tag :color="record.retryable ? 'blue' : 'default'">{{ record.retryable ? '是' : '否' }}</a-tag></template>
+          <template v-else-if="column.key === 'request' || column.key === 'provider'"><a-typography-text v-if="text" copyable class="admin-mono">{{ text }}</a-typography-text><span v-else>—</span></template>
+        </template>
+      </a-table>
+      <div class="admin-pagination"><span class="admin-muted">第 {{ index + 1 }} 页</span><a-button :disabled="index === 0 || loading" @click="page.previous">上一页</a-button><a-button :disabled="!data?.next_cursor || loading" @click="page.next">下一页</a-button></div>
+    </a-card>
+  </section>
+</template>

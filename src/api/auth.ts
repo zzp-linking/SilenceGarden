@@ -25,7 +25,8 @@ export class HttpAuthApi implements AuthApi {
   // 旧密码错误也返回 401，禁止自动刷新重试以免掩盖真实表单错误。
   changePassword(request: ChangePasswordRequest): Promise<SessionData> { return clientV2.request('/password/change', { method: 'POST', body: JSON.stringify(request) }, false) }
   async refresh(): Promise<void> { await clientV2.request('/session/refresh', { method: 'POST' }) }
-  async logout(): Promise<void> { await clientV2.request('/logout', { method: 'POST', body: '{}' }) }
+  // 登出本身不依赖续签；会话已失效时直接由调用方清理本地状态。
+  async logout(): Promise<void> { await clientV2.request('/logout', { method: 'POST', body: '{}' }, false) }
 }
 
 /** 测试和显式开发 Mock 模式使用的内存认证实现。 */

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, shallowRef, watch } from 'vue'
 import type { AiSettings, ScopeQuota } from '@/types/admin'
 import { integerField, microCnyToYuan, yuanToMicroCny } from '@/utils/microCny'
 
@@ -30,10 +30,10 @@ type SettingsDraft = {
 
 const props = defineProps<{ settings: AiSettings; busy?: boolean }>()
 const emit = defineEmits<{ save: [settings: AiSettings] }>()
-const localError = ref('')
+const localError = shallowRef('')
 
 const quotaConcurrentMaximum: Record<keyof AiSettings['quotas'], number> = {
-  global: 8,
+  global: 16,
   account_default: 3,
   anonymous_ip: 8,
   anonymous_device: 8
@@ -84,9 +84,9 @@ function toDraft(settings: AiSettings): SettingsDraft {
 }
 
 const draft = reactive<SettingsDraft>(toDraft(props.settings))
-watch(() => props.settings, value => Object.assign(draft, toDraft(value)), { deep: true })
+watch(() => props.settings, value => Object.assign(draft, toDraft(value)))
 
-const priceModels = computed(() => Array.from(new Set([...draft.models.allowlist, ...Object.keys(draft.pricing.models)])))
+const priceModels = computed(() => Array.from(new Set([...draft.models.allowlist_text.split(/[\n,]/).map(item => item.trim()).filter(Boolean), ...Object.keys(props.settings.pricing.models)])))
 
 function ensurePrice(model: string): PriceDraft {
   // allowlist 新增模型时先创建空价格行，避免模板访问 undefined。
@@ -94,10 +94,6 @@ function ensurePrice(model: string): PriceDraft {
   return draft.pricing.models[model]
 }
 
-function setPrice(model: string, key: keyof PriceDraft, event: Event): void {
-  const target = event.target
-  if (target instanceof HTMLInputElement) ensurePrice(model)[key] = target.value
-}
 
 /** 把可能含临时字段的表单草稿收敛回服务端接受的完整设置。 */
 function buildSettings(): AiSettings {
@@ -135,112 +131,86 @@ function submit(): void {
     localError.value = error instanceof Error ? error.message : '配置格式不正确'
   }
 }
+
+const activeTab = shallowRef('service')
+const quotaNames = { global: '全站', account_default: '登录用户', anonymous_ip: '匿名 IP', anonymous_device: '匿名设备' }
+const integerRules = [{ required: true, type: 'integer' as const, min: 0, message: '请输入非负整数' }]
+const moneyRules = [{ required: true, validator: async (_rule: unknown, value: string) => { yuanToMicroCny(value) } }]
+const limitFields = [
+  { key: 'login_text_chars', label: '登录输入字符上限' }, { key: 'anonymous_text_chars', label: '匿名输入字符上限' },
+  { key: 'context_target_tokens', label: '上下文目标 Token' }, { key: 'summary_trigger_tokens', label: '摘要触发 Token' },
+  { key: 'recent_messages', label: '最近消息数' }, { key: 'max_output_tokens', label: '最大输出 Token' },
+  { key: 'run_timeout_seconds', label: '生成超时（秒）' }, { key: 'image_concurrent', label: '图片并发' },
+  { key: 'image_max_bytes', label: '图片最大字节' }, { key: 'image_max_pixels', label: '图片最大像素' }
+] as const
+const modelFields = [
+  { key: 'answer', label: '回答模型' }, { key: 'vision', label: '视觉模型' }, { key: 'moderation', label: '审核模型' },
+  { key: 'title', label: '标题模型' }, { key: 'summary', label: '摘要模型' }
+] as const
+const priceFields = [{ key: 'input_cache_hit', label: '缓存命中（元 / 百万 Token）' }, { key: 'input_cache_miss', label: '缓存未命中（元 / 百万 Token）' }, { key: 'output', label: '输出（元 / 百万 Token）' }] as const
+watch(priceModels, models => { models.forEach(ensurePrice) }, { immediate: true })
+function validationFailed({ errorFields }: { errorFields: Array<{ name: Array<string | number> }> }) {
+  const field = errorFields[0]?.name[0]
+  activeTab.value = field === 'quotas' || field === 'service' ? 'service' : field === 'limits' ? 'limits' : field === 'models' || field === 'images' ? 'models' : field === 'pricing' ? 'pricing' : 'other'
+}
+
 </script>
 
 <template>
-  <form class="settings-form" @submit.prevent="submit">
-    <fieldset>
-      <legend>服务文案</legend>
-      <label>关闭时维护文案<textarea v-model="draft.service.maintenance_message" rows="2" /></label>
-    </fieldset>
-
-    <fieldset>
-      <legend>四类日配额</legend>
-      <div class="quota-grid">
-        <section v-for="(quota, name) in draft.quotas" :key="name" class="sub-card">
-          <h3>{{ name === 'global' ? '全站' : name === 'account_default' ? '登录用户' : name === 'anonymous_ip' ? '匿名 IP' : '匿名设备' }}</h3>
-          <label>日预算（元）<input v-model="quota.daily_micro_cny_yuan" inputmode="decimal" min="0" placeholder="例如 5" /></label>
-          <label>日轮数<input v-model.number="quota.daily_rounds" type="number" min="0" step="1" /></label>
-          <label>最大并发（上限 {{ quotaConcurrentMax(name) }}）<input v-model.number="quota.max_concurrent" type="number" min="0" :max="quotaConcurrentMax(name)" step="1" /></label>
-          <label>每分钟请求<input v-model.number="quota.requests_per_minute" type="number" min="0" step="1" /></label>
-        </section>
-      </div>
-      <p class="hint">全站额度是所有身份共享的总上限；登录用户、匿名 IP 和匿名设备额度还会分别限制各自范围，实际以最先耗尽的一层为准。预算输入按人民币元展示，保存时使用整数 micro_cny。</p>
-    </fieldset>
-
-    <fieldset>
-      <legend>输入、上下文与运行限制</legend>
-      <div class="field-grid">
-        <label>登录输入字符<input v-model.number="draft.limits.login_text_chars" type="number" min="0" /></label>
-        <label>匿名输入字符<input v-model.number="draft.limits.anonymous_text_chars" type="number" min="0" /></label>
-        <label>上下文目标 tokens<input v-model.number="draft.limits.context_target_tokens" type="number" min="0" /></label>
-        <label>摘要触发 tokens<input v-model.number="draft.limits.summary_trigger_tokens" type="number" min="0" /></label>
-        <label>最近消息数<input v-model.number="draft.limits.recent_messages" type="number" min="0" /></label>
-        <label>最大输出 tokens<input v-model.number="draft.limits.max_output_tokens" type="number" min="0" /></label>
-        <label>Run 超时（秒）<input v-model.number="draft.limits.run_timeout_seconds" type="number" min="0" /></label>
-        <label>图片并发<input v-model.number="draft.limits.image_concurrent" type="number" min="0" /></label>
-        <label>图片最大字节<input v-model.number="draft.limits.image_max_bytes" type="number" min="0" /></label>
-        <label>图片最大像素<input v-model.number="draft.limits.image_max_pixels" type="number" min="0" /></label>
-      </div>
-      <label>允许图片 MIME（逗号或换行分隔）<textarea v-model="draft.limits.allowed_image_mimes_text" rows="2" /></label>
-    </fieldset>
-
-    <fieldset>
-      <legend>模型与图片</legend>
-      <div class="field-grid">
-        <label>Answer 模型<input v-model="draft.models.answer" /></label>
-        <label>Vision 模型<input v-model="draft.models.vision" /></label>
-        <label>Moderation 模型<input v-model="draft.models.moderation" /></label>
-        <label>Title 模型<input v-model="draft.models.title" /></label>
-        <label>Summary 模型<input v-model="draft.models.summary" /></label>
-      </div>
-      <label>Model allowlist（每行一个）<textarea v-model="draft.models.allowlist_text" rows="3" /></label>
-      <label class="checkbox"><input v-model="draft.images.enabled" type="checkbox" />启用一次性图片</label>
-    </fieldset>
-
-    <fieldset>
-      <legend>价格与汇率</legend>
-      <div class="field-grid">
-        <label>价格版本<input v-model.number="draft.pricing.version" type="number" min="0" step="1" /></label>
-        <label>USD/CNY 汇率（元）<input v-model="draft.pricing.exchange_rate_yuan" inputmode="decimal" placeholder="例如 7.14" /></label>
-        <label>安全余量（元）<input v-model="draft.pricing.safety_margin_yuan" inputmode="decimal" placeholder="例如 0.01" /></label>
-      </div>
-      <p class="hint">模型价格单位为“人民币元 / 百万 tokens”，最多 6 位小数；保存时精确转换为 micro_cny 整数。</p>
-      <div v-for="model in priceModels" :key="model" class="price-card">
-        <h3>{{ model }}</h3>
-        <div class="field-grid">
-          <label>缓存命中 元/百万<input :value="ensurePrice(model).input_cache_hit" inputmode="decimal" @input="setPrice(model, 'input_cache_hit', $event)" /></label>
-          <label>缓存未命中 元/百万<input :value="ensurePrice(model).input_cache_miss" inputmode="decimal" @input="setPrice(model, 'input_cache_miss', $event)" /></label>
-          <label>输出 元/百万<input :value="ensurePrice(model).output" inputmode="decimal" @input="setPrice(model, 'output', $event)" /></label>
-        </div>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend>审核、保留和开场问题</legend>
-      <div class="field-grid">
-        <label>本地规则版本<input v-model="draft.moderation.rule_version" /></label>
-        <label>失败日志保留天数<input v-model.number="draft.retention.failure_log_days" type="number" min="0" /></label>
-        <label>审计日志保留天数<input v-model.number="draft.retention.audit_log_days" type="number" min="0" /></label>
-      </div>
-      <div class="starters">
-        <label v-for="(_starter, index) in draft.starters" :key="index">开场问题 {{ index + 1 }}<input v-model="draft.starters[index]" /></label>
-      </div>
-    </fieldset>
-
-    <p v-if="localError" class="error">{{ localError }}</p>
-    <button class="save" type="submit" :disabled="busy">保存完整 settings（revision {{ settings.revision }}）</button>
-  </form>
+  <a-form class="settings-form" :model="draft" layout="vertical" :disabled="busy" @finish="submit" @finish-failed="validationFailed">
+    <a-tabs v-model:active-key="activeTab">
+      <a-tab-pane key="service" tab="服务与配额" force-render>
+        <a-row :gutter="[24, 0]"><a-col :xs="24" :xl="12"><a-form-item label="关闭时维护文案" :name="['service', 'maintenance_message']"><a-textarea v-model:value="draft.service.maintenance_message" :rows="3" /></a-form-item></a-col></a-row>
+        <a-divider orientation="left">日配额</a-divider>
+        <a-alert type="info" show-icon message="各层配额同时生效，以最先耗尽的一层为准。预算按人民币元填写。" class="settings-hint" />
+        <a-row :gutter="[16, 16]">
+          <a-col v-for="(quota, name) in draft.quotas" :key="name" :xs="24" :md="12" :xxl="6">
+            <a-card size="small" :title="quotaNames[name]">
+              <a-form-item label="日预算（元）" :name="['quotas', name, 'daily_micro_cny_yuan']" :rules="moneyRules"><a-input v-model:value="quota.daily_micro_cny_yuan" inputmode="decimal" placeholder="例如 5" /></a-form-item>
+              <a-form-item label="日轮数" :name="['quotas', name, 'daily_rounds']" :rules="integerRules"><a-input-number v-model:value="quota.daily_rounds" :min="0" :precision="0" class="full-width" /></a-form-item>
+              <a-form-item :label="'最大生成并发（上限 ' + quotaConcurrentMax(name) + '）'" :name="['quotas', name, 'max_concurrent']" :rules="[{ required: true, type: 'integer', min: 0, max: quotaConcurrentMax(name), message: '请输入范围内的整数' }]"><a-input-number v-model:value="quota.max_concurrent" :min="0" :max="quotaConcurrentMax(name)" :precision="0" class="full-width" /></a-form-item>
+              <a-form-item label="每分钟请求" :name="['quotas', name, 'requests_per_minute']" :rules="integerRules"><a-input-number v-model:value="quota.requests_per_minute" :min="0" :precision="0" class="full-width" /></a-form-item>
+            </a-card>
+          </a-col>
+        </a-row>
+      </a-tab-pane>
+      <a-tab-pane key="limits" tab="输入与运行限制" force-render>
+        <a-row :gutter="[24, 0]"><a-col v-for="field in limitFields" :key="field.key" :xs="24" :md="12" :xl="8"><a-form-item :label="field.label" :name="['limits', field.key]" :rules="integerRules"><a-input-number v-model:value="draft.limits[field.key]" :min="0" :precision="0" class="full-width" /></a-form-item></a-col></a-row>
+        <a-form-item label="允许图片 MIME" :name="['limits', 'allowed_image_mimes_text']" extra="每行一个，或以逗号分隔"><a-textarea v-model:value="draft.limits.allowed_image_mimes_text" :rows="3" /></a-form-item>
+      </a-tab-pane>
+      <a-tab-pane key="models" tab="模型与图片" force-render>
+        <a-row :gutter="[24, 0]"><a-col v-for="field in modelFields" :key="field.key" :xs="24" :md="12"><a-form-item :label="field.label" :name="['models', field.key]" :rules="[{ required: true, whitespace: true, message: '请输入模型名称' }]"><a-input v-model:value="draft.models[field.key]" /></a-form-item></a-col></a-row>
+        <a-form-item label="模型白名单" :name="['models', 'allowlist_text']" extra="每行一个，或以逗号分隔"><a-textarea v-model:value="draft.models.allowlist_text" :rows="4" /></a-form-item>
+        <a-form-item label="一次性图片"><a-switch v-model:checked="draft.images.enabled" checked-children="开启" un-checked-children="关闭" /></a-form-item>
+      </a-tab-pane>
+      <a-tab-pane key="pricing" tab="价格与汇率" force-render>
+        <a-alert type="info" show-icon message="模型价格单位为人民币元 / 百万 Token，最多 6 位小数。保存时精确转换为微元整数。" class="settings-hint" />
+        <a-row :gutter="[24, 0]">
+          <a-col :xs="24" :md="8"><a-form-item label="价格版本" :name="['pricing', 'version']" :rules="integerRules"><a-input-number v-model:value="draft.pricing.version" :min="0" :precision="0" class="full-width" /></a-form-item></a-col>
+          <a-col :xs="24" :md="8"><a-form-item label="USD/CNY 汇率" :name="['pricing', 'exchange_rate_yuan']" :rules="moneyRules"><a-input v-model:value="draft.pricing.exchange_rate_yuan" inputmode="decimal" /></a-form-item></a-col>
+          <a-col :xs="24" :md="8"><a-form-item label="安全余量（元）" :name="['pricing', 'safety_margin_yuan']" :rules="moneyRules"><a-input v-model:value="draft.pricing.safety_margin_yuan" inputmode="decimal" /></a-form-item></a-col>
+        </a-row>
+        <a-card v-for="model in priceModels" :key="model" size="small" :title="model" class="price-card">
+          <a-row :gutter="[24, 0]"><a-col v-for="field in priceFields" :key="field.key" :xs="24" :md="8"><a-form-item :label="field.label" :name="['pricing', 'models', model, field.key]" :rules="moneyRules"><a-input v-model:value="draft.pricing.models[model]![field.key]" inputmode="decimal" /></a-form-item></a-col></a-row>
+        </a-card>
+      </a-tab-pane>
+      <a-tab-pane key="other" tab="审核与保留" force-render>
+        <a-row :gutter="[24, 0]">
+          <a-col :xs="24" :md="8"><a-form-item label="本地规则版本" :name="['moderation', 'rule_version']"><a-input v-model:value="draft.moderation.rule_version" /></a-form-item></a-col>
+          <a-col :xs="24" :md="8"><a-form-item label="失败日志保留天数" :name="['retention', 'failure_log_days']" :rules="integerRules"><a-input-number v-model:value="draft.retention.failure_log_days" :min="0" :precision="0" class="full-width" /></a-form-item></a-col>
+          <a-col :xs="24" :md="8"><a-form-item label="审计日志保留天数" :name="['retention', 'audit_log_days']" :rules="integerRules"><a-input-number v-model:value="draft.retention.audit_log_days" :min="0" :precision="0" class="full-width" /></a-form-item></a-col>
+        </a-row>
+        <a-divider orientation="left">开场问题</a-divider>
+        <a-row :gutter="[24, 0]"><a-col v-for="(_starter, index) in draft.starters" :key="index" :xs="24" :md="12"><a-form-item :label="'开场问题 ' + (index + 1)" :name="['starters', index]"><a-input v-model:value="draft.starters[index]" /></a-form-item></a-col></a-row>
+      </a-tab-pane>
+    </a-tabs>
+    <a-alert v-if="localError" type="error" :message="localError" show-icon class="settings-hint" />
+    <a-divider />
+    <a-space wrap><a-button type="primary" html-type="submit" :loading="busy">保存全部设置</a-button><a-typography-text type="secondary">当前版本 {{ settings.revision }} · 所有分组一起保存</a-typography-text></a-space>
+  </a-form>
 </template>
-
 <style scoped>
-.settings-form { display: grid; gap: 1.2rem; margin-top: 1.5rem; }
-fieldset { display: grid; gap: 1rem; min-width: 0; padding: 1.2rem; border: 1px solid #e0e8de; border-radius: 12px; background: #fff; }
-legend { padding: 0 .4rem; color: #31533e; font-weight: 700; }
-label { display: grid; gap: .35rem; color: #718173; font-size: .78rem; }
-input, textarea { width: 100%; box-sizing: border-box; padding: .62rem; border: 1px solid #dce5da; border-radius: 7px; background: #fff; color: #303b33; font: inherit; }
-textarea { resize: vertical; }
-.field-grid, .quota-grid, .starters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
-.quota-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.sub-card, .price-card { display: grid; gap: .7rem; padding: .8rem; border: 1px solid #edf1eb; border-radius: 9px; }
-h3 { margin: 0; color: #477458; font-size: .85rem; }
-.price-card { margin-top: .8rem; }
-.hint { margin: 0; color: #8a998c; font-size: .75rem; line-height: 1.5; }
-.checkbox { display: flex; grid-template-columns: auto 1fr; align-items: center; gap: .5rem; }
-.checkbox input { width: auto; }
-.save { justify-self: start; padding: .7rem 1rem; border: 1px solid #9ebaa1; border-radius: 8px; background: #477458; color: #fff; cursor: pointer; }
-.save:disabled { cursor: wait; opacity: .6; }
-.error { margin: 0; color: #966565; }
-@media (max-width: 900px) { .quota-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 620px) { .field-grid, .quota-grid, .starters { grid-template-columns: 1fr; } }
+.full-width { width: 100%; }
+.settings-hint { margin-bottom: 24px; }
+.price-card { margin-bottom: 16px; }
 </style>

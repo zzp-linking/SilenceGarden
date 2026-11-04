@@ -23,7 +23,8 @@
             一些关于代码、生活和正在发生之事的记录。不是结论，只是留下脚印。
           </p>
           <div class="garden-index">
-            <span>{{ catalog.length }} 篇札记</span>
+            <span>{{ standaloneCount }} 篇独立札记</span>
+            <span>{{ collectionCount }} 本合集</span>
             <span>按时间展开</span>
           </div>
         </div>
@@ -41,40 +42,38 @@
           <p>从最近的一页开始，也可以任意走入</p>
         </div>
 
-        <div v-if="catalog.length" class="article-list">
-          <router-link
-            v-for="(item, index) in catalog"
-            :key="item._id || index"
-            :to="'/article/' + item._id"
-            class="article-entry"
-          >
-            <span class="article-entry-index">{{ String(index + 1).padStart(2, '0') }}</span>
-            <span class="article-entry-main">
-              <strong>{{ item.title }}</strong>
-              <span class="article-entry-tags">
-                <span v-for="tag in item.tags || []" :key="tag">{{ tag }}</span>
-              </span>
-            </span>
-            <span class="article-entry-arrow" aria-hidden="true">↗</span>
-          </router-link>
-        </div>
-        <p v-else class="garden-empty">墨色尚未干透，文章很快会回来。</p>
+        <nav v-if="user.user?.role === 'admin'" class="catalog-actions" aria-label="文章管理">
+          <RouterLink to="/editor">新建文章</RouterLink>
+          <RouterLink to="/admin/article-collections">管理合集</RouterLink>
+        </nav>
+        <p v-if="catalogError" role="alert">{{ catalogError }} <button type="button" @click="loadCatalog">重新加载</button></p>
+        <ArticleCatalogList v-else-if="catalog.length" :items="catalog" />
+        <p v-else class="garden-empty">这里还没有收录文章。</p>
       </section>
     </div>
   </main>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, shallowRef } from 'vue'
 import { useArticleStore } from '@/stores/article'
+import { useUserStore } from '@/stores/user'
+import ArticleCatalogList from '@/components/article/ArticleCatalogList.vue'
 
 const articleStore = useArticleStore()
 // 保持模板只读访问 Store，同时保留 Pinia 响应性。
 const catalog = computed(() => articleStore.catalog)
+const user = useUserStore()
+const standaloneCount = computed(() => catalog.value.filter(item => item.type !== 'collection').length)
+const collectionCount = computed(() => catalog.value.filter(item => item.type === 'collection').length)
+const catalogError = shallowRef('')
+async function loadCatalog() {
+  catalogError.value = ''
+  try { await articleStore.getArticleCatalog() }
+  catch (cause) { catalogError.value = cause instanceof Error ? cause.message : '目录加载失败' }
+}
 
-onMounted(() => {
-  articleStore.getArticleCatalog()
-})
+onMounted(loadCatalog)
 </script>
 
 <style scoped lang="less">
@@ -83,6 +82,8 @@ onMounted(() => {
 .article-catalog {
   font-family: @poem;
 }
+.catalog-actions { display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0; }
+.catalog-actions a { color: #315746; min-height: 44px; display: flex; align-items: center; }
 
 .article-main {
   position: relative;
