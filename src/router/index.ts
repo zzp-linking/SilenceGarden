@@ -30,6 +30,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/admin/AdminLayout.vue'),
     meta: { auth: true, roles: ['admin'], layout: 'fullscreen' },
     children: [
+      // 知识管理复用父级管理员权限；详情页采用独立懒加载组件。
+      { path: 'agent/knowledge-bases', name: 'AdminKnowledgeBases', component: () => import('@/views/admin/agent/KnowledgeBases.vue') },
+      { path: 'agent/knowledge-bases/:id', name: 'AdminKnowledgeBaseDetail', component: () => import('@/views/admin/agent/KnowledgeBaseDetail.vue') },
+      // Task detail shares the administrator guard and remains reloadable by ID.
+      { path: 'agent/index-jobs/:jobId?', name: 'AdminIndexJobs', component: () => import('@/views/admin/agent/IndexJobs.vue') },
       { path: '', name: 'AdminOverview', component: () => import('@/views/admin/AdminOverview.vue') },
       { path: 'article-collections', name: 'AdminArticleCollections', component: () => import('@/views/admin/AdminArticleCollections.vue') },
       { path: 'users', name: 'AdminUsers', component: () => import('@/views/admin/AdminUsers.vue') },

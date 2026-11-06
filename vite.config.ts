@@ -30,6 +30,8 @@ export default defineConfig({
     }
   },
   server: {
+    // 构建会复制 dist/index.html；开发监听排除产物，避免 Windows 同时构建时出现 EBUSY。
+    watch: { ignored: ['**/dist/**'] },
     proxy: {
       '/home/api': {
         target: 'http://127.0.0.1:4000',

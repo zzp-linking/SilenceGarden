@@ -14,13 +14,16 @@ const drawerOpen = shallowRef(false)
 const navigation = [
   { key: '/admin', label: '服务总览', icon: AppstoreOutlined },
   { key: '/admin/article-collections', label: '文章合集', icon: BookOutlined },
+  { key: '/admin/agent/knowledge-bases', label: '知识库', icon: BookOutlined },
+  { key: '/admin/agent/index-jobs', label: '索引任务', icon: BookOutlined },
   { key: '/admin/users', label: '用户管理', icon: TeamOutlined },
   { key: '/admin/ai-settings', label: 'AI 设置', icon: SettingOutlined },
   { key: '/admin/ai-runs', label: '失败日志', icon: WarningOutlined },
   { key: '/admin/audit-logs', label: '审计日志', icon: AuditOutlined }
 ]
 const items = navigation.map(item => ({ key: item.key, icon: () => h(item.icon), label: h(RouterLink, { to: item.key }, () => item.label) }))
-const selectedKeys = computed(() => [route.path.replace(/\/$/, '') || '/admin'])
+// 详情子页继续高亮知识库导航，保持面包屑与侧栏一致。
+const selectedKeys = computed(() => [route.path.startsWith('/admin/agent/knowledge-bases') ? '/admin/agent/knowledge-bases' : route.path.startsWith('/admin/agent/index-jobs') ? '/admin/agent/index-jobs' : route.path.replace(/\/$/, '') || '/admin'])
 const currentTitle = computed(() => navigation.find(item => item.key === selectedKeys.value[0])?.label || '管理后台')
 const adminTheme = { algorithm: theme.defaultAlgorithm, token: { colorPrimary: '#1677ff', colorBgLayout: '#f5f5f5', borderRadius: 6, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif' } }
 watch(() => route.path, () => { drawerOpen.value = false })

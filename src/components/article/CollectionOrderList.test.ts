@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { defineComponent } from 'vue'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { antdPlugins, installAntdEnvironment } from '../../../tests/helpers/antd'
+import { antdPlugins, installAntdEnvironment } from '@/testsupport/antd'
 beforeEach(installAntdEnvironment)
 import CollectionOrderList from './CollectionOrderList.vue'
 import ArticleCatalogList from './ArticleCatalogList.vue'

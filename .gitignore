@@ -7,3 +7,4 @@ tests/
 # Local CodeGraph index / config
 .codegraph/
 codegraph.json
+*.test.ts
