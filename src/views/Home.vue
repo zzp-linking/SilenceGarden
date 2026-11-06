@@ -396,13 +396,13 @@ function handleWheel(event: WheelEvent): void {
   const direction = Math.sign(delta)
   const nextIndex = currentIndex + (direction > 0 ? 1 : -1)
 
-  // At either end, preserve the browser's normal overscroll behavior.
+  // 到达任一端点后，保留浏览器默认的越界滚动行为。
   if (!chapters[nextIndex]) {
     wheelIntent = 0
     return
   }
 
-  // Hold the wheel gesture until it expresses enough intent to advance one chapter.
+  // 保持当前滚轮手势，直至用户意图足够明确，再切换一个章节。
   event.preventDefault()
   if (wheelIntent && Math.sign(wheelIntent) !== direction) wheelIntent = 0
   wheelIntent += delta

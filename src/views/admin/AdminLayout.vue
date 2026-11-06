@@ -16,6 +16,9 @@ const navigation = [
   { key: '/admin/article-collections', label: '文章合集', icon: BookOutlined },
   { key: '/admin/agent/knowledge-bases', label: '知识库', icon: BookOutlined },
   { key: '/admin/agent/index-jobs', label: '索引任务', icon: BookOutlined },
+  // 模型管理入口与普通 AI 设置相互独立。
+  { key: '/admin/agent/model-configs', label: '模型配置', icon: SettingOutlined },
+  { key: '/agent/chat', label: '智能体对话', icon: AppstoreOutlined },
   { key: '/admin/users', label: '用户管理', icon: TeamOutlined },
   { key: '/admin/ai-settings', label: 'AI 设置', icon: SettingOutlined },
   { key: '/admin/ai-runs', label: '失败日志', icon: WarningOutlined },

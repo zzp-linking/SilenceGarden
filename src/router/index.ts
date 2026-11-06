@@ -25,15 +25,18 @@ const routes: RouteRecordRaw[] = [
   { path: '/violin/:id', name: 'Violin', component: () => import('@/views/Violin.vue') },
   { path: '/login', name: 'Login', component: () => import('@/views/Login.vue') },
   { path: '/ai', name: 'AiChat', component: () => import('@/views/AiChat.vue'), meta: { layout: 'fullscreen' } },
+  // 任务 1 工作区独立于既有普通聊天路由和 store。
+  { path: '/agent/chat', name: 'AgentChat', component: () => import('@/views/agent/Chat.vue'), meta: { auth: true, layout: 'fullscreen' } },
   {
     path: '/admin',
     component: () => import('@/views/admin/AdminLayout.vue'),
     meta: { auth: true, roles: ['admin'], layout: 'fullscreen' },
     children: [
+      { path: 'agent/model-configs', name: 'AdminAgentModels', component: () => import('@/views/admin/agent/ModelConfigs.vue') },
       // 知识管理复用父级管理员权限；详情页采用独立懒加载组件。
       { path: 'agent/knowledge-bases', name: 'AdminKnowledgeBases', component: () => import('@/views/admin/agent/KnowledgeBases.vue') },
       { path: 'agent/knowledge-bases/:id', name: 'AdminKnowledgeBaseDetail', component: () => import('@/views/admin/agent/KnowledgeBaseDetail.vue') },
-      // Task detail shares the administrator guard and remains reloadable by ID.
+      // 任务详情共用管理员权限门禁，并支持按标识刷新恢复。
       { path: 'agent/index-jobs/:jobId?', name: 'AdminIndexJobs', component: () => import('@/views/admin/agent/IndexJobs.vue') },
       { path: '', name: 'AdminOverview', component: () => import('@/views/admin/AdminOverview.vue') },
       { path: 'article-collections', name: 'AdminArticleCollections', component: () => import('@/views/admin/AdminArticleCollections.vue') },

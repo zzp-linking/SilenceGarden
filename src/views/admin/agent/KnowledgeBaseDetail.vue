@@ -60,7 +60,7 @@ async function refresh() {
     <a-alert type="info" show-icon message="原文件固定保存，删除后重新上传会创建新文档与新资产。上传成功不表示已可检索。" />
     <template v-if="base">
       <IndexRuntimeStatus :state="runtime.state.value" :loading="runtime.loading.value" :error="runtime.error.value" @refresh="runtime.reload" />
-      <!-- Keep validation reachable without scrolling past twenty document rows. -->
+      <!-- 保持校验操作可见，避免用户必须滚过二十行文档才能找到。 -->
       <a-tabs :key="baseId" default-active-key="content">
         <a-tab-pane key="content" tab="Book 与文档"><div class="content-panels"><BookManager :key="baseId" :base-id="baseId" :accepting="!!runtime.state.value?.accepting" :active="indexActive" :activity-key="activityKey" @changed="refreshKey++" @indexed="indexed" /><DocumentPanel :key="baseId" :base-id="baseId" :refresh-key="refreshKey" :activity-key="activityKey" :runtime="runtime.state.value" @indexed="indexed" /></div></a-tab-pane>
         <a-tab-pane key="search" tab="检索验证"><KnowledgeSearch :key="`${baseId}-search`" :base-id="baseId" :ready="!!runtime.state.value?.retrieval_ready" :refresh-key="refreshKey" /></a-tab-pane>

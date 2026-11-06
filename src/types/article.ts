@@ -82,7 +82,7 @@ export interface ArticleImageUploadInput {
 /** 创建供阅读页初始化使用的空文章。 */
 export const emptyArticleDetail = (): ArticleDetail => ({ title: '', tags: [], html: '' })
 
-/** Book metadata and its authoritative reading-order snapshot. */
+/** 合集元数据及其权威阅读顺序快照。 */
 export interface ArticleCollection {
   _id: string
   title: string
@@ -95,7 +95,7 @@ export interface ArticleCollection {
   items: ArticleCatalogItem[]
 }
 
-/** A stable receipt can be recovered without creating another article. */
+/** 可恢复已有稳定回执，无需再次创建文章。 */
 export interface ArticleWriteResult {
   operationId?: string
   state?: 'complete' | 'pending' | 'unknown' | 'failed'

@@ -73,9 +73,9 @@ export const analyJson = (dp) => {
 
 /**
  * post method  带token
- * Requests  params, returning a common request config.
+ * 根据请求参数返回统一请求配置。
  *
- * @param  {object} params  the method wangt to post
+ * @param {object} params 待提交的请求参数。
  * 
  */
 export const postModelOnline = ( params ) => {
@@ -94,9 +94,9 @@ export const postModelOnline = ( params ) => {
 
 /**
  * post method  不带token
- * Requests  params, returning a common request config.
+ * 根据请求参数返回统一请求配置。
  *
- * @param  {object} params  the method wangt to post
+ * @param {object} params 待提交的请求参数。
  * 
  */
 export const postModel = ( params ) => {

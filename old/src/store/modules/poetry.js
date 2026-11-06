@@ -15,23 +15,23 @@ const state = {
 
 const actions = {
 	async getPoetryCatalog ({ commit }, obj) {
-    //commit(types.GLOBAL_LOADING, { loading: true })
+    // 历史代码参考：commit(types.GLOBAL_LOADING, { loading: true })
 		try{
 			const result = await fetch(GET_POETRY_CATALOG, getModel()).then(analy)
 			result ? commit(types.GET_POETRY_CATALOG, result) : ''
-     // commit(types.GLOBAL_LOADING, { loading: false })
+     // 历史代码参考：commit(types.GLOBAL_LOADING, { loading: false })
 		}catch(e){
-     // commit(types.GLOBAL_LOADING, { loading: false })
+     // 历史代码参考：commit(types.GLOBAL_LOADING, { loading: false })
 		}
 	},
   async getPoetryCatalogByKeyword ({ commit }, obj) {
-    //commit(types.GLOBAL_LOADING, { loading: true })
+    // 历史代码参考：commit(types.GLOBAL_LOADING, { loading: true })
     try{
       const result = await fetch(restful(GET_POETRY_CATALOG_VAGUE, obj), getModel()).then(analy)
       result ? commit(types.GET_POETRY_CATALOG, result) : ''
-      //commit(types.GLOBAL_LOADING, { loading: false })
+      // 历史代码参考：commit(types.GLOBAL_LOADING, { loading: false })
     }catch(e){
-     // commit(types.GLOBAL_LOADING, { loading: false })
+     // 历史代码参考：commit(types.GLOBAL_LOADING, { loading: false })
     }
   },
 	getPoemByTitle ({ commit }, obj){

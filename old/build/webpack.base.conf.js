@@ -68,11 +68,11 @@ module.exports = {
     ]
   },
   node: {
-    // prevent webpack from injecting useless setImmediate polyfill because Vue
-    // source contains it (although only uses it if it's native).
+    // Vue 源码引用了原生 setImmediate（仅在原生可用时使用），
+    // 此处禁止 webpack 为此注入无用兼容实现。
     setImmediate: false,
-    // prevent webpack from injecting mocks to Node native modules
-    // that does not make sense for the client
+    // 禁止 webpack 为 Node 原生模块注入模拟实现，
+    // 因为这些实现对浏览器客户端没有意义。
     dgram: 'empty',
     fs: 'empty',
     net: 'empty',

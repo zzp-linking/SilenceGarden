@@ -1,5 +1,5 @@
 <template>
-	<!-- :style="{ backgroundImage: `url(${diskBGImg})` }" -->
+	<!-- 历史界面参考： :style="{ backgroundImage: `url(${diskBGImg})` }" -->
 	<div class="violin-wrap"
 		@keyup.space.prevent="keyBoardChontroller" tabindex="-1" ref="page">
 		<div class="violin-bg-content">
@@ -170,8 +170,8 @@
 		},
 		mounted () {
 			//页面聚焦
-			// console.log('mounted........................')
-			// console.log(this.$refs.music)
+			// 历史代码参考：console.log('mounted........................')
+			// 历史代码参考：console.log(this.$refs.music)
 			const music = this.$refs.music
 			const vm = this
 
@@ -201,7 +201,7 @@
 			playEnded () {
 				if (this.model === 'single') {
 					this.$refs.music.play()
-					//this.$refs.music.load(this.aud)
+					// 历史代码参考：this.$refs.music.load(this.aud)
 				} else if (this.model === 'random') {
 					if (this.clock) {
 						clearInterval(this.clock)
@@ -209,7 +209,7 @@
 					}
 					// console.log('随机播放！')
 					this.$store.dispatch('getRamdonViolinInfo', { id: this.$route.params.id })
-					//this.$router.push('/violin/' + 3)
+					// 历史代码参考：this.$router.push('/violin/' + 3)
 				} else {
 					//停止
 					if (this.clock) {
@@ -220,10 +220,10 @@
 			},
 			//play()和autoplay开始播放时触发
 			startPlay () {
-				// console.log('playing musci_______________')
+				// 历史代码参考：console.log('playing musci_______________')
 				// console.log('play()和autoplay开始播放时触发  ')
 				// console.log('当前播放位置：')
-				// console.log(this.$refs.music.currentTime)
+				// 历史代码参考：console.log(this.$refs.music.currentTime)
 				this.pointer.init_value = this.$refs.music.currentTime
 				this.pausedChange()
 				this.startClock()
@@ -243,34 +243,34 @@
 			},
 			//键盘按键控制
 			keyBoardChontroller () {
-				// console.log('key down')
+				// 历史代码参考：console.log('key down')
 				this.playPause()
 			},
 			playPause () {
-				// console.log(this.$refs.music)
-				// console.log(this.$refs.music.paused)
+				// 历史代码参考：console.log(this.$refs.music)
+				// 历史代码参考：console.log(this.$refs.music.paused)
 				const music = this.$refs.music
 				music.paused ? music.play() : music.pause()
 				this.pausedChange()
 				this.startClock ()
-				// if (!music.paused) {
-				// 	const vm = this
-				// 	setTimeout(function () {
-				// 		console.log('claer delay')
-				// 		console.log(vm.paused)
+				// 历史代码参考：if (!music.paused) {
+				// 历史代码参考：const vm = this
+				// 历史代码参考：setTimeout(function () {
+				// 历史代码参考：console.log('claer delay')
+				// 历史代码参考：console.log(vm.paused)
 				// 	}, 800)
 				// }
 			},
 			pausedChange () {
-				// console.log('audio suorce')
-				// console.log(this.$refs.music)
-				// console.log()
-				// console.log('change playing status')
-				// console.log(this.$refs.music.paused)
-				// console.log()
-				// console.log('change playing during')
-				// console.log(this.$refs.music.duration)
-				// console.log(this.$refs.music.currentTime)
+				// 历史代码参考：console.log('audio suorce')
+				// 历史代码参考：console.log(this.$refs.music)
+				// 历史代码参考：console.log()
+				// 历史代码参考：console.log('change playing status')
+				// 历史代码参考：console.log(this.$refs.music.paused)
+				// 历史代码参考：console.log()
+				// 历史代码参考：console.log('change playing during')
+				// 历史代码参考：console.log(this.$refs.music.duration)
+				// 历史代码参考：console.log(this.$refs.music.currentTime)
 				this.paused = this.$refs.music.paused
 			},
 			// 播放组件初始化
@@ -284,7 +284,7 @@
 			},
 			// 开始计时器
 			startClock () {
-				// console.log(this.$refs.music.play.playing)
+				// 历史代码参考：console.log(this.$refs.music.play.playing)
 				this.stopClock()
 				const vm = this
 				this.clock = setInterval( () => {
@@ -452,7 +452,7 @@
 	color: #000;
 }
 .melody-exchange{
-	/*position: absolute;*/
+	/* 历史代码参考（不参与执行）：position: absolute;*/
 	width: 30px;
 	height: 30px;
 	font-size: 30px;
@@ -541,7 +541,7 @@
 	top: -94px;
 	background-image: url('@{image}/violin/disk-controllerArm.png');
 	transform: rotate(-30deg);
-	/*transform-origin: 85% 15%;*/
+	/* 历史代码参考（不参与执行）：transform-origin: 85% 15%;*/
 	transform-origin: 83.78% 11.2%;
 	transition: all .5s;
 }
@@ -570,7 +570,7 @@
 	color: #000000;
 	float: right;
 	margin-top: -26px;
-	/*background-color: rgba(255, 255, 255, 0.3);
+	/* 历史代码参考（不参与执行）：background-color: rgba(255, 255, 255, 0.3);
 	padding: 0 5px;
 	border-radius: 4px;*/
   font-size: 12px;

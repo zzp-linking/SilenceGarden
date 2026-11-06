@@ -27,9 +27,9 @@ async function finish(result: ArticleWriteResult) {
   creating.value = false
 }
 async function create(value: { title: string; description: string }) {
-  try { await finish(await write.execute('POST', collectionAdminBase, value)) } catch { /* write exposes a resumable error */ }
+  try { await finish(await write.execute('POST', collectionAdminBase, value)) } catch { /* 写入返回可恢复错误。 */ }
 }
-async function recover() { try { await finish(await write.recover()) } catch { /* keep dialog and original command */ } }
+async function recover() { try { await finish(await write.recover()) } catch { /* 保持对话框及原命令。 */ } }
 function change(event: Event) { model.value = (event.target as HTMLSelectElement).value || null }
 onMounted(load)
 </script>

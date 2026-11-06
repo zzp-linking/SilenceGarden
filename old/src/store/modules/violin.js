@@ -55,7 +55,7 @@ const mutations = {
     [types.GET_MELODY_CATALOG] (state, list) {
    		state.catalog = list
     },
-    /*[types.GET_MELODY_RANDOM] (state, result) {
+    /* 历史代码参考（不参与执行）：[types.GET_MELODY_RANDOM] (state, result) {
    		state.melody = result
     }*/
 }

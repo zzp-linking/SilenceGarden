@@ -4,7 +4,12 @@ dist.zip
 docs/
 tests/
 
-# Local CodeGraph index / config
+# 本地 CodeGraph 索引及配置。
 .codegraph/
 codegraph.json
 *.test.ts
+
+# 智能体回归测试必须随实现交付。
+!src/stores/agent/**/*.test.ts
+!src/features/agent/**/*.test.ts
+!src/components/agent/**/*.test.ts

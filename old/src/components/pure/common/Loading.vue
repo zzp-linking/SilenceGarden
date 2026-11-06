@@ -131,7 +131,7 @@
     height: 100%;
   }
 
-  /* loader 1 */
+  /* 加载动画样式一。 */
   .loader1, .loader1 div {
     border-radius: 50%;
     padding: 8px;
@@ -142,7 +142,7 @@
     border-bottom-color: rgba(0, 0, 255, 0.5);
   }
 
-  /*loader 2  */
+  /*加载动画样式二。  */
   .loader2, .loader2 div {
     border-radius: 50%;
     padding: 8px;
@@ -154,7 +154,7 @@
     border-right-color: rgba(0, 0, 0, 0.5);
   }
 
-  /*loader 3  */
+  /*加载动画样式三。  */
   .loader3, .loader3 div {
     border-radius: 50%;
     padding: 8px;
@@ -169,7 +169,7 @@
     animation-duration: 3s;
   }
 
-  /* loader 4 */
+  /* 加载动画样式四。 */
   .loader4, .loader4 div {
     border-radius: 50%;
     padding: 8px;

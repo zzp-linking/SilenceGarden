@@ -37,7 +37,7 @@
 	}
 </script>
 
-<style scoped="scoped" lang="less">/*violin-catalog-bg.jpg*/
+<style scoped="scoped" lang="less">/*小提琴目录背景资源：violin-catalog-bg.jpg。*/
 @import '../../config/base.less';
 .content{
 	width: 100%;

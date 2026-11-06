@@ -22,7 +22,7 @@ rm(path.join(config.build.assetsRoot, config.build.assetsSubDirectory), err => {
     process.stdout.write(stats.toString({
       colors: true,
       modules: false,
-      children: false, // If you are using ts-loader, setting this to true will make TypeScript errors show up during build.
+      children: false, // 使用 ts-loader 时，设为 true 可在构建期间显示 TypeScript 错误。
       chunks: false,
       chunkModules: false
     }) + '\n\n')

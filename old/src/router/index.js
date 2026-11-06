@@ -1,14 +1,14 @@
 import Vue from 'vue'
 import Router from 'vue-router'
 import { CookieUtils } from '@/utils/cookie'
-// import Home from '@/components/page/Home'
-// import Poetry from '@/components/page/Poetry'
-// import Poem from '@/components/page/Poem'
-// import ViolinCatalog from '@/components/page/ViolinCatalog'
-// import Violin from '@/components/page/Violin'
-// import Article from '@/components/page/Article'
-// import ArticleCatalog from '@/components/page/ArticleCatalog'
-// import Editor from '@/components/page/Editor'
+// 历史代码参考：import Home from '@/components/page/Home'
+// 历史代码参考：import Poetry from '@/components/page/Poetry'
+// 历史代码参考：import Poem from '@/components/page/Poem'
+// 历史代码参考：import ViolinCatalog from '@/components/page/ViolinCatalog'
+// 历史代码参考：import Violin from '@/components/page/Violin'
+// 历史代码参考：import Article from '@/components/page/Article'
+// 历史代码参考：import ArticleCatalog from '@/components/page/ArticleCatalog'
+// 历史代码参考：import Editor from '@/components/page/Editor'
 
 const Home = resolve => {
   // require.ensure 是 Webpack 的特殊语法，用来设置 code-split point

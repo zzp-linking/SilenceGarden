@@ -1,4 +1,4 @@
-/** Go's unset timestamp is not an actual update; keep it out of operational views. */
+/** Go 的未设置时间不代表实际更新，运维视图中不展示该值。 */
 export function formatAdminTime(value?: string): string {
   if (!value || value.startsWith('0001-')) return '—'
   const date = new Date(value)

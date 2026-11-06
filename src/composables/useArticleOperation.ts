@@ -8,7 +8,7 @@ type Method = 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 interface PendingWrite { requestId: string; method: Method; url: string; payload: Record<string, unknown> }
 const terminalCodes = new Set(['INVALID_ARGUMENT', 'ARTICLE_NOT_FOUND', 'COLLECTION_NOT_FOUND', 'VERSION_CONFLICT', 'MEMBERSHIP_CONFLICT', 'COLLECTION_NOT_EMPTY', 'REQUEST_ID_CONFLICT'])
 
-/** Freeze one command and preserve its identity across a refresh or uncertain response. */
+/** 固定一条命令，在刷新或响应结果不确定时保持其身份不变。 */
 export function useArticleOperation(scope: string) {
   const user = useUserStore()
   const storageKey = 'sg.article.write.' + (user.user?.id || 'guest') + '.' + scope

@@ -7,7 +7,7 @@ export function adminError(reason: unknown, fallback = '操作失败，请稍后
   return reason instanceof Error ? reason.message : fallback
 }
 
-/** Each panel owns its request state; stale responses cannot update an unmounted panel. */
+/** 每个面板独立管理请求状态，旧响应不能更新已卸载面板。 */
 export function useAdminResource<T>(loader: () => Promise<T>) {
   const data = shallowRef<T | null>(null)
   const loading = shallowRef(false)
@@ -32,7 +32,7 @@ export function useAdminResource<T>(loader: () => Promise<T>) {
   return { data, loading, error, load }
 }
 
-/** Cursor history offers previous/next navigation without inventing totals or page offsets. */
+/** 使用游标历史提供前后页导航，不虚构总数或页偏移。 */
 export function useAdminCursorPage<T extends { next_cursor?: string }>(loader: (options: PageOptions) => Promise<T>) {
   const cursors = ref<Array<string | undefined>>([undefined])
   const index = shallowRef(0)

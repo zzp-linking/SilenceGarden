@@ -3,7 +3,7 @@ import { useUserStore } from '@/stores/user'
 import { message } from '@/utils/talk'
 import type { ApiResponse } from '@/types/api'
 
-/** Preserve a named business error and its partial-save receipt. */
+/** 保留具名业务错误及其部分保存回执。 */
 export class ApiError extends Error {
   constructor(public readonly code: number | boolean | string, message: string, public readonly result: unknown) {
     super(message)

@@ -1,7 +1,7 @@
 import * as types from './mutation-types'
 import  { LOGIN } from '@/config/url'
 import { postModel, analy } from '@/utils/net'
-//import { confirmMoadl } from '@/tool/talk'
+// 历史代码参考：import { confirmMoadl } from '@/tool/talk'
 
 export const actions = {
   login ({commit}, obj){

@@ -46,7 +46,7 @@ const isLastVersion = computed(() => (props.versionIndex ?? 0) >= (props.version
     <div class="assistant-label">
       <span class="assistant-seal">语</span>
       <span class="assistant-name">静语</span>
-      <!-- <WhisperRipple v-if="isLive" :size="17" class="label-ripple" /> -->
+      <!-- 历史界面参考： <WhisperRipple v-if="isLive" :size="17" class="label-ripple" /> -->
     </div>
 
     <ReasoningPanel v-if="version.reasoning || run" v-model:expanded="expanded" :reasoning="version.reasoning" :state="run?.state" @copy-code="emit('copy', $event)" />

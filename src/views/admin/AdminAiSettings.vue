@@ -19,7 +19,7 @@ let readTask: Promise<boolean> | undefined
 async function readSettings(): Promise<AiSettings> {
   const next = await adminApi.settings()
   const current = settings.value
-  // Keep the existing snapshot when a reload returns the same JSON settings.
+  // 重新加载得到相同 JSON 设置时，保留既有快照。
   return current && JSON.stringify(current) === JSON.stringify(next) ? current : next
 }
 
@@ -38,7 +38,7 @@ async function save(next: AiSettings) {
   if (writing.value) return
   saving.value = true; actionError.value = ''
   try {
-    // Finish an in-flight read before writing; the draft's revision still protects against conflicts.
+    // 写入前等待正在进行的读取结束；草稿修订号仍负责防止并发覆盖。
     if (readTask && !await readTask) return
     settings.value = await adminApi.updateSettings(next.revision, next)
     message.success('全部设置已保存')

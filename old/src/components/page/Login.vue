@@ -2,7 +2,7 @@
 	<div class="login-wrap">
 		<div class="form-box" @keydown.enter="handleSubmit('form')">
 			<div class="form-title">
-				<!--<img src="/assets/image/common/login-bg.jpg"/>-->
+				<!-- 历史界面参考：<img src="/assets/image/common/login-bg.jpg"/>-->
 				<h1 class="title-text">登录</h1>
 			</div>
 			<Form ref="form" :model="form" :rules="rules" class="silencegarden-login-form" >
@@ -34,11 +34,11 @@
 export default {
   data () {
     return {
-      //imgCodeSrc: BASE + '/verifyCode?t=' + new Date()*1,
+      // 历史代码参考：imgCodeSrc: BASE + '/verifyCode?t=' + new Date()*1,
       form: {
         account: '',
         password: '',
-        // image_code: ''
+        // 历史代码参考：image_code: ''
       },
       rules: {
         account: [
@@ -61,12 +61,12 @@ export default {
         this.$store.dispatch('login', {
           account: this.form.account.trim(),
           password: this.form.password.trim(),
-          //image_code: this.form.image_code.trim(),
+          // 历史代码参考：image_code: this.form.image_code.trim(),
         })
           }
       })
     },
-    /*imgRefresh () {
+    /* 历史代码参考（不参与执行）：imgRefresh () {
       this.imgCodeSrc = BASE + '/verifyCode?t=' + new Date()*1
     }*/
   }

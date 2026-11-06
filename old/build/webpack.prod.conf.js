@@ -28,7 +28,7 @@ const webpackConfig = merge(baseWebpackConfig, {
     chunkFilename: utils.assetsPath('js/[id].[chunkhash].js')
   },
   plugins: [
-    // http://vuejs.github.io/vue-loader/en/workflow/production.html
+    // 生产构建参考：http://vuejs.github.io/vue-loader/en/workflow/production.html。
     new webpack.DefinePlugin({
       'process.env': env
     }),
@@ -41,25 +41,25 @@ const webpackConfig = merge(baseWebpackConfig, {
       sourceMap: config.build.productionSourceMap,
       parallel: true
     }),
-    // extract css into its own file
+    // 将 CSS 提取到独立文件。
     new ExtractTextPlugin({
       filename: utils.assetsPath('css/[name].[contenthash].css'),
-      // Setting the following option to `false` will not extract CSS from codesplit chunks.
-      // Their CSS will instead be inserted dynamically with style-loader when the codesplit chunk has been loaded by webpack.
-      // It's currently set to `true` because we are seeing that sourcemaps are included in the codesplit bundle as well when it's `false`, 
-      // increasing file size: https://github.com/vuejs-templates/webpack/issues/1110
+      // 下列选项设为 false 时，不会从代码分块中提取 CSS；
+      // webpack 加载分块后，会改由 style-loader 动态插入对应样式。
+      // 当前设为 true，因为设为 false 时源码映射也会进入代码分块，
+      // 增大文件体积；相关问题：https://github.com/vuejs-templates/webpack/issues/1110。
       allChunks: true,
     }),
-    // Compress extracted CSS. We are using this plugin so that possible
-    // duplicated CSS from different components can be deduped.
+    // 压缩已提取的 CSS；使用此插件同时去重
+    // 不同组件中可能重复的样式。
     new OptimizeCSSPlugin({
       cssProcessorOptions: config.build.productionSourceMap
         ? { safe: true, map: { inline: false } }
         : { safe: true }
     }),
-    // generate dist index.html with correct asset hash for caching.
-    // you can customize output by editing /index.html
-    // see https://github.com/ampedandwired/html-webpack-plugin
+    // 生成构建目录的 index.html，写入正确资源摘要以支持缓存。
+    // 可以编辑 /index.html 自定义页面输出。
+    // 插件参考：https://github.com/ampedandwired/html-webpack-plugin。
     new HtmlWebpackPlugin({
       filename: config.build.index,
       template: 'index.html',
@@ -68,21 +68,21 @@ const webpackConfig = merge(baseWebpackConfig, {
         removeComments: true,
         collapseWhitespace: true,
         removeAttributeQuotes: true
-        // more options:
-        // https://github.com/kangax/html-minifier#options-quick-reference
+        // 更多选项参考：
+        // HTML 压缩参数：https://github.com/kangax/html-minifier#options-quick-reference。
       },
-      // necessary to consistently work with multiple chunks via CommonsChunkPlugin
+      // 使用 CommonsChunkPlugin 时，保证多个分块处理一致所需的配置。
       chunksSortMode: 'dependency'
     }),
-    // keep module.id stable when vendor modules does not change
+    // 供应商依赖不变时保持 module.id 稳定。
     new webpack.HashedModuleIdsPlugin(),
-    // enable scope hoisting
+    // 开启作用域提升。
     new webpack.optimize.ModuleConcatenationPlugin(),
-    // split vendor js into its own file
+    // 将供应商 JavaScript 依赖拆分到独立文件。
     new webpack.optimize.CommonsChunkPlugin({
       name: 'vendor',
       minChunks (module) {
-        // any required modules inside node_modules are extracted to vendor
+        // node_modules 中被引用的模块均提取到供应商依赖分块。
         return (
           module.resource &&
           /\.js$/.test(module.resource) &&
@@ -92,15 +92,15 @@ const webpackConfig = merge(baseWebpackConfig, {
         )
       }
     }),
-    // extract webpack runtime and module manifest to its own file in order to
-    // prevent vendor hash from being updated whenever app bundle is updated
+    // 将 webpack 运行时和模块清单提取到独立文件，
+    // 避免应用业务包更新时连带改变供应商依赖摘要。
     new webpack.optimize.CommonsChunkPlugin({
       name: 'manifest',
       minChunks: Infinity
     }),
-    // This instance extracts shared chunks from code splitted chunks and bundles them
-    // in a separate chunk, similar to the vendor chunk
-    // see: https://webpack.js.org/plugins/commons-chunk-plugin/#extra-async-commons-chunk
+    // 此实例提取代码拆分后各分块共用的内容，
+    // 将其打包为类似供应商依赖的独立分块。
+    // 异步共用分块参考：https://webpack.js.org/plugins/commons-chunk-plugin/#extra-async-commons-chunk。
     new webpack.optimize.CommonsChunkPlugin({
       name: 'app',
       async: 'vendor-async',
@@ -108,7 +108,7 @@ const webpackConfig = merge(baseWebpackConfig, {
       minChunks: 3
     }),
 
-    // copy custom static assets
+    // 复制自定义静态资源。
     new CopyWebpackPlugin([
       {
         from: path.resolve(__dirname, '../static'),

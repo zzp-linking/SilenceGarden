@@ -83,7 +83,7 @@ HTMLVideoElement 和HTMLAudioElement 均继承自HTMLMediaElement
 
   //准备状态  
 
-     Media.readyState;    //1:HAVE_NOTHING 2:HAVE_METADATA 3.HAVE_CURRENT_DATA 4.HAVE_FUTURE_DATA 5.HAVE_ENOUGH_DATA  
+     Media.readyState;    //媒体就绪级别：1 无数据、2 元数据、3 当前数据、4 后续数据、5 足够数据；对应 HAVE_NOTHING 至 HAVE_ENOUGH_DATA。
 
      Media.seeking; //是否正在seeking  
 

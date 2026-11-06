@@ -1,5 +1,5 @@
-// The Vue build version to load with the `import` command
-// (runtime-only or standalone) has been set in webpack.base.conf with an alias.
+// import 命令加载的 Vue 构建版本
+// 已在 webpack.base.conf 中通过别名确定，可为仅运行时版或独立版。
 import Vue from 'vue'
 import App from './App'
 import router from './router'

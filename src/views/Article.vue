@@ -164,7 +164,7 @@ const contentClick = (event: MouseEvent): void => {
 
 .article-read-shell {
   display: grid;
-  // Equal outer columns keep the reading area centered independently of the side note.
+  // 两侧使用等宽外列，使阅读区域不受旁注宽度影响而保持居中。
   grid-template-columns: minmax(0, 1fr) minmax(0, 860px) minmax(0, 1fr);
   gap: 32px;
   align-items: start;
@@ -426,58 +426,58 @@ const contentClick = (event: MouseEvent): void => {
   .hljs {
     background-color: transparent;
   }
-  // color: #304239;
+  // 历史样式参考：color: #304239;
   // font-family: "信笺手写体", "STKaiti", "KaiTi", serif;
-  // font-size: 18px;
-  // line-height: 2;
+  // 历史样式参考：font-size: 18px;
+  // 历史样式参考：line-height: 2;
 
-  // h1,
-  // h2,
-  // h3,
-  // h4 {
-  //   color: #1e2924;
+  // 历史样式参考：h1,
+  // 历史样式参考：h2,
+  // 历史样式参考：h3,
+  // 历史样式参考：h4 {
+  // 历史样式参考：color: #1e2924;
   //   font-family: "信笺手写体", "STKaiti", "KaiTi", serif;
-  //   font-weight: 400;
-  //   line-height: 1.45;
+  // 历史样式参考：font-weight: 400;
+  // 历史样式参考：line-height: 1.45;
   // }
 
-  // h2 {
-  //   margin-top: 2.2em;
-  //   padding-left: 16px;
-  //   border-left: 2px solid #a94737;
+  // 历史样式参考：h2 {
+  // 历史样式参考：margin-top: 2.2em;
+  // 历史样式参考：padding-left: 16px;
+  // 历史样式参考：border-left: 2px solid #a94737;
   // }
 
-  // a {
-  //   color: #315746;
+  // 历史样式参考：a {
+  // 历史样式参考：color: #315746;
   // }
 
-  // blockquote {
-  //   margin: 28px 0;
-  //   padding: 8px 24px;
-  //   color: #718078;
-  //   border-left: 1px solid #c6a15b;
-  //   background: rgba(169, 192, 168, 0.12);
+  // 历史样式参考：blockquote {
+  // 历史样式参考：margin: 28px 0;
+  // 历史样式参考：padding: 8px 24px;
+  // 历史样式参考：color: #718078;
+  // 历史样式参考：border-left: 1px solid #c6a15b;
+  // 历史样式参考：background: rgba(169, 192, 168, 0.12);
   // }
 
-  // pre {
-  //   border: 1px solid rgba(49, 87, 70, 0.14);
-  //   background: rgba(230, 225, 211, 0.62) !important;
+  // 历史样式参考：pre {
+  // 历史样式参考：border: 1px solid rgba(49, 87, 70, 0.14);
+  // 历史样式参考：background: rgba(230, 225, 211, 0.62) !important;
   // }
 
-  // img {
-  //   max-width: 100%;
-  //   cursor: pointer;
-  //   border: 1px solid rgba(49, 87, 70, 0.14);
-  //   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  // 历史样式参考：img {
+  // 历史样式参考：max-width: 100%;
+  // 历史样式参考：cursor: pointer;
+  // 历史样式参考：border: 1px solid rgba(49, 87, 70, 0.14);
+  // 历史样式参考：transition: transform 0.3s ease, box-shadow 0.3s ease;
   // }
 
-  // img:hover {
-  //   box-shadow: 0 10px 24px rgba(49, 87, 70, 0.12);
-  //   transform: translateY(-2px);
+  // 历史样式参考：img:hover {
+  // 历史样式参考：box-shadow: 0 10px 24px rgba(49, 87, 70, 0.12);
+  // 历史样式参考：transform: translateY(-2px);
   // }
 
-  // code {
-  //   font-size: 90% !important;
+  // 历史样式参考：code {
+  // 历史样式参考：font-size: 90% !important;
   // }
 }
 

@@ -118,7 +118,7 @@ const current = ref(0)
 const volume = ref(1)
 const clock = ref<ReturnType<typeof setInterval> | null>(null)
 const max = ref(0)
-const model = ref('') // single, random
+const model = ref('') // 查询模式：单个或随机，对应 single、random。
 
 const pointer = reactive({
   init_value: -30,

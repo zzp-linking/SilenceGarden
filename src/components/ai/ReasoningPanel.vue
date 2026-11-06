@@ -19,7 +19,7 @@ const label = computed(() => streaming.value ? '正在梳理思绪' : props.reas
 <template>
   <section v-if="reasoning || label" class="reasoning" :class="{ streaming }">
     <button type="button" class="reasoning-toggle" :aria-expanded="expanded" @click="expanded = !expanded">
-      <!-- <WhisperRipple v-if="streaming" :size="16" /> -->
+      <!-- 历史界面参考： <WhisperRipple v-if="streaming" :size="16" /> -->
       <span class="reasoning-label">{{ label }}</span>
       <AppIcon name="chevron-down" :size="15" class="chevron" :class="{ up: expanded }" />
     </button>

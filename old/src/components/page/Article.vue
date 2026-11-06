@@ -65,7 +65,7 @@
 <style scoped lang="less">
   @import '../../config/base.less';
   .img-modal.open{
-   // height: 100vh;
+   // 历史样式参考：height: 100vh;
     display: block;
   }
   .img-modal{

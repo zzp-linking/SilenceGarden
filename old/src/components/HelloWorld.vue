@@ -49,7 +49,7 @@ export default {
 }
 </script>
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
+<!-- 添加 scoped 属性，可将 CSS 仅限定于当前组件。 -->
 <style scoped lang="less">
 
 </style>

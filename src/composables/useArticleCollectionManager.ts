@@ -4,7 +4,7 @@ import { articleAdminBase, collectionAdminBase, collectionsApi } from '@/api/art
 import { useArticleOperation } from './useArticleOperation'
 import type { ArticleCatalogItem, ArticleCollection, ArticleWriteResult } from '@/types/article'
 
-/** Management orchestration; forms and order rows keep their own presentation contracts. */
+/** 管理操作编排；表单与排序行分别维护自身展示契约。 */
 export function useArticleCollectionManager() {
   const route = useRoute()
   const books = ref<ArticleCollection[]>([])
@@ -45,10 +45,10 @@ export function useArticleCollectionManager() {
     try {
       const result = await write.execute(method, url, payload)
       await finish(result)
-    } catch { /* operation keeps its error and any recoverable command */ }
+    } catch { /* 操作保留其错误及所有可恢复命令。 */ }
   }
   async function finish(result: ArticleWriteResult) { await refresh(result.id || selectedId.value) }
-  async function recover() { try { await finish(await write.recover()) } catch { /* retain pending command */ } }
+  async function recover() { try { await finish(await write.recover()) } catch { /* 保留待处理命令。 */ } }
   async function saveMetadata(value: { title: string; description: string }) {
     if (!selectedId.value) await perform('POST', collectionAdminBase, value)
     else if (book.value) await perform('PATCH', collectionAdminBase + '/' + selectedId.value, { ...value, version: book.value.version })

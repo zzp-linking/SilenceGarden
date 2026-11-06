@@ -9,7 +9,7 @@ function normalizeDecimal(value: string): { whole: bigint; fraction: string } {
   return { whole: BigInt(wholeText), fraction: fractionText.padEnd(6, '0') }
 }
 
-/** Converts a decimal Yuan string to an exact integer micro-CNY value. */
+/** 将十进制人民币字符串转换为精确的整数微元金额。 */
 export function yuanToMicroCny(value: string): number {
   const parsed = normalizeDecimal(value)
   const micros = parsed.whole * MICRO_PER_YUAN + BigInt(parsed.fraction || '0')
@@ -18,7 +18,7 @@ export function yuanToMicroCny(value: string): number {
   return result
 }
 
-/** Formats an integer micro-CNY value without using binary floating point. */
+/** 格式化整数微元金额，不使用二进制浮点运算。 */
 export function microCnyToYuan(value: number): string {
   if (!Number.isSafeInteger(value) || value < 0) throw new Error('micro_cny 必须是非负安全整数')
   const micros = BigInt(value)

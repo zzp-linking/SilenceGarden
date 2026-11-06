@@ -75,7 +75,7 @@
     padding: 0 10px;
     font-size: 36px;
     transition: all .5s;
-    //background: linear-gradient(to top, rgba(0, 0, 0, 0.4), rgba(255, 255, 288, 0.8));
+    // 历史样式参考：background: linear-gradient(to top, rgba(0, 0, 0, 0.4), rgba(255, 255, 288, 0.8));
     background: linear-gradient(-90deg, rgba(0, 0, 0, 0.4), rgba(255, 255, 288, 0.8));
   }
   .item:hover{
@@ -138,7 +138,7 @@
     text-indent: 1em;
     margin-bottom: 5px;
   }
-::-webkit-input-placeholder { /* WebKit, Blink, Edge */
+::-webkit-input-placeholder { /* 浏览器内核：WebKit、Blink 和 Edge。 */
     font-family: "楷体";
     font-size: 16px;
 }

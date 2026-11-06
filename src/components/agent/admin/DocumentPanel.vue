@@ -106,7 +106,7 @@ async function download(value: KnowledgeDocument) {
 <template>
   <a-card title="文档" :bordered="false">
     <template #extra><a-space wrap><a-button :loading="page.loading.value" :disabled="busy" @click="page.first">刷新文档</a-button><a-button type="primary" :disabled="busy" @click="edit(null)">上传文档</a-button></a-space></template>
-    <!-- Ant Design emits finish only when a model is bound, even without rules. -->
+    <!-- Ant Design 只有绑定表单模型后才发出 finish，即使未配置校验规则。 -->
     <a-form :model="filters" layout="vertical" class="document-filters" @finish="search">
       <a-form-item label="标题包含"><a-input v-model:value="filters.title" aria-label="标题包含" allow-clear :maxlength="200" /></a-form-item>
       <a-form-item label="标签精确匹配"><a-input v-model:value="filters.tag" aria-label="标签精确匹配" allow-clear :maxlength="40" /></a-form-item>
