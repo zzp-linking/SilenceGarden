@@ -35,13 +35,13 @@ onMounted(load)
 <template>
   <section class="admin-page">
     <div class="admin-page-head"><div><h1 class="admin-page-title">模型配置</h1><p class="admin-page-description">维护 DeepSeek 凭据与模式。每次新发送使用当前启用配置，已运行的回答保持原快照。</p></div><a-space><RouterLink to="/agent/chat">打开智能体</RouterLink><a-button :loading="loading" @click="load">刷新</a-button><a-button type="primary" :disabled="busy" @click="edit()">新建配置</a-button></a-space></div>
-    <a-alert :type="active && known ? 'info' : 'warning'" show-icon :message="!known ? '配置状态尚未读取成功，请刷新核对' : active ? `当前启用：${active.name} · ${active.model} · ${active.thinking_enabled ? '深度思考' : '普通模式'}` : '当前全部停用，智能体暂不可发送'" />
+    <a-alert :type="active && known ? 'info' : 'warning'" show-icon :message="!known ? '配置状态尚未读取成功，请刷新核对' : active ? `当前启用：${active.name} · ${active.model} · ${active.thinking_enabled ? '允许深度思考' : '仅普通模式'}` : '当前全部停用，智能体暂不可发送'" />
     <a-alert v-if="error" type="error" show-icon :message="error" closable @close="error = ''" />
     <a-alert v-if="result" :type="result.success ? 'success' : 'warning'" show-icon :message="result.reason" :description="`耗时 ${result.duration_ms} ms；思考通道：${result.saw_reasoning ? '已观测' : '未观测'}；回答通道：${result.saw_answer ? '已观测' : '未观测'}`" />
     <a-card :bordered="false"><a-table :columns="columns" :data-source="rows" row-key="id" :pagination="false" :loading="loading" :scroll="{ x: 900 }">
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'name'"><strong>{{ record.name }}</strong><div class="admin-muted">DeepSeek · {{ record.model }}</div><small class="admin-muted">修订 {{ record.revision }}</small></template>
-        <template v-else-if="column.key === 'mode'">{{ record.thinking_enabled ? '深度思考' : '普通' }}</template>
+        <template v-else-if="column.key === 'mode'">{{ record.thinking_enabled ? '允许深度思考' : '仅普通' }}</template>
         <template v-else-if="column.key === 'status'"><a-tag :color="record.enabled ? 'blue' : 'default'">{{ record.enabled ? '启用' : '停用' }}</a-tag><div>{{ record.has_api_key ? record.credential_available ? '密钥已配置' : '凭据不可用，请替换或修复部署密钥' : '未配置密钥' }}</div></template>
         <template v-else-if="column.key === 'time'">{{ new Date(record.updated_at).toLocaleString() }}</template>
         <template v-else-if="column.key === 'actions'"><a-space wrap><a-button size="small" :disabled="busy" @click="edit(record)">编辑</a-button><a-button size="small" :disabled="busy || !record.credential_available" @click="action(record, 'test')">测试</a-button><a-button size="small" :disabled="busy || (!record.enabled && !record.credential_available)" @click="action(record, record.enabled ? 'deactivate' : 'activate')">{{ record.enabled ? '停用' : '启用' }}</a-button><a-popconfirm title="删除此停用配置？" :disabled="record.enabled || busy" @confirm="action(record, 'delete')"><a-button size="small" danger :disabled="record.enabled || busy">删除</a-button></a-popconfirm></a-space></template>

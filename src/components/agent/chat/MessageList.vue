@@ -4,22 +4,28 @@ import MarkdownContent from '@/components/ai/MarkdownContent.vue'
 import type { AgentMessage } from '@/features/agent/chat/model'
 
 /** 阅读行为归消息面板管理，独立于传输和当前选中会话。 */
-const props = defineProps<{ messages: AgentMessage[]; chatId: string }>()
+const props = defineProps<{ messages: AgentMessage[]; chatId: string; hasMore?: boolean; loading?: boolean }>()
+const emit = defineEmits<{ older: [] }>() // 上层负责读取，本组件维护滚动锚点。
+let anchor: { height: number; top: number; chat: string } | undefined // 加载前的阅读位置。
+/** 更早页插入后按新增高度维持当前阅读锚点。 */
+function older(): void { const p = pane.value; if (p) { anchor = { height: p.scrollHeight, top: p.scrollTop, chat: props.chatId }; pinned.value = false }; emit('older') }
 const pane = useTemplateRef<HTMLElement>('pane') // 消息滚动容器。
 const pinned = shallowRef(true) // 尊重用户向上阅读，只有明确回到底部后才继续自动跟随。
 const size = computed(() => props.messages.reduce((n, m) => n + m.text.length + m.reasoning.length, 0))
-const labels: Record<string, string> = { running: '生成中', stopping: '正在停止', stopped: '已停止 · 未完成', failed: '生成失败 · 未完成', incomplete: '回答未完成', completed: '已完成' }
+const labels: Record<string, string> = { running: '生成中', stopping: '正在停止', stopped: '已停止 · 未完成', failed: '生成失败 · 未完成', incomplete: '回答未完成', completed: '已完成', interrupted: '服务重启 · 已中断' }
 /** 记录用户滚动意图，不移动键盘焦点。 */
 function scroll(): void { const p = pane.value; if (p) pinned.value = p.scrollHeight - p.scrollTop - p.clientHeight < 80 }
 /** 明确恢复底部跟随。 */
 function bottom(): void { pinned.value = true; const p = pane.value; if (p) p.scrollTop = p.scrollHeight }
 watch(() => props.chatId, () => { pinned.value = true; void nextTick(bottom) })
 watch(size, () => { if (pinned.value) void nextTick(bottom) })
+watch(() => props.loading, async value => { if (!value && anchor) { await nextTick(); const p = pane.value; if (p && anchor?.chat === props.chatId) p.scrollTop = anchor.top + p.scrollHeight - anchor.height; anchor = undefined } })
 </script>
 
 <template>
   <div class="message-frame">
     <div ref="pane" class="message-pane" tabindex="0" aria-label="会话消息" @scroll="scroll">
+      <a-button v-if="hasMore" block :loading="loading" @click="older">加载更早消息</a-button>
       <a-empty v-if="!messages.length" description="从一个问题开始。这个会话拥有独立上下文。" />
       <article v-for="message in messages" :key="message.message_id" class="agent-message" :class="message.role">
         <div class="message-author">{{ message.role === 'user' ? '你' : '智能助手' }}</div>
@@ -28,6 +34,7 @@ watch(size, () => { if (pinned.value) void nextTick(bottom) })
         <!-- 复用既有渲染器，禁用原始 HTML 并净化 Markdown 和代码输出。 -->
         <MarkdownContent v-else :source="message.text" :max-chars="524288" />
         <p v-if="message.role === 'assistant'" class="message-state">{{ labels[message.status] }}<span v-if="message.reason && message.status !== 'completed'"> · {{ message.reason }}</span></p>
+        <p v-else-if="message.status === 'interrupted'" class="message-state">服务重启，本轮未提交的输出不可恢复。</p>
       </article>
     </div>
     <a-button v-if="!pinned" class="back-bottom" @click="bottom">回到底部</a-button>

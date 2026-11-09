@@ -3,8 +3,8 @@ import { shallowRef } from 'vue'
 import type { AgentChat } from '@/features/agent/chat/model'
 
 /** 侧栏管理重命名对话框；父组件负责服务端操作及选中会话。 */
-defineProps<{ chats: AgentChat[]; selected: string; busy: boolean }>()
-const emit = defineEmits<{ select: [id: string]; create: []; rename: [id: string, title: string]; remove: [id: string] }>()
+defineProps<{ chats: AgentChat[]; selected: string; busy: boolean; hasMore?: boolean }>()
+const emit = defineEmits<{ select: [id: string]; create: []; more: []; rename: [id: string, title: string]; remove: [id: string] }>()
 const renaming = shallowRef('') // 对话框目标，与当前运行生命周期无关。
 const title = shallowRef('') // 未保存标题在关闭对话框后仍暂存。
 /** 初始化可编辑标题，不直接修改服务端快照。 */
@@ -14,21 +14,22 @@ function save(): void { if (title.value.trim()) { emit('rename', renaming.value,
 </script>
 
 <template>
-  <nav class="session-sidebar" aria-label="智能体临时会话">
+  <nav class="session-sidebar" aria-label="智能体历史会话">
     <a-button type="primary" block :loading="busy" @click="emit('create')">新建会话</a-button>
-    <p class="session-hint">会话仅保留在当前服务进程，重启后清空。</p>
-    <a-empty v-if="!chats.length" description="还没有临时会话" />
+    <p class="session-hint">历史自动保存。保存失败时请重试；删除会永久移除会话及其历史。</p>
+    <a-empty v-if="!chats.length" description="还没有会话" />
     <ul class="sessions">
       <li v-for="chat in chats" :key="chat.chat_id" class="session-row" :class="{ selected: selected === chat.chat_id }">
         <button class="session-select" :aria-current="selected === chat.chat_id ? 'page' : undefined" @click="emit('select', chat.chat_id)">
-          <span class="session-title">{{ chat.title }}</span><small>{{ chat.current_run_id ? '运行中' : '临时会话' }}</small>
+          <span class="session-title">{{ chat.title }}</span><small>{{ chat.current_run_id ? '运行中' : '历史会话' }}</small>
         </button>
         <div class="session-actions">
           <a-button type="text" size="small" :aria-label="`重命名 ${chat.title}`" @click="edit(chat)">改名</a-button>
-          <a-popconfirm title="删除这个临时会话？" :disabled="!!chat.current_run_id" @confirm="emit('remove', chat.chat_id)"><a-button type="text" danger size="small" :disabled="!!chat.current_run_id" :aria-label="`删除 ${chat.title}`">删除</a-button></a-popconfirm>
+          <a-popconfirm title="永久删除这个会话及全部历史？" :disabled="!!chat.current_run_id" @confirm="emit('remove', chat.chat_id)"><a-button type="text" danger size="small" :disabled="!!chat.current_run_id" :aria-label="`删除 ${chat.title}`">删除</a-button></a-popconfirm>
         </div>
       </li>
     </ul>
+    <a-button v-if="hasMore" :loading="busy" @click="emit('more')">加载更多会话</a-button>
     <RouterLink to="/">返回花园</RouterLink>
     <a-modal :open="!!renaming" title="重命名会话" @cancel="renaming = ''" @ok="save">
       <label for="agent-session-title">会话标题</label><a-input id="agent-session-title" v-model:value="title" :maxlength="80" @press-enter="save" />

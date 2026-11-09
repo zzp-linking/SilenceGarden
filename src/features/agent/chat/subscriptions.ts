@@ -1,6 +1,6 @@
 import { agentChatApi } from '@/api/agentChat'
 import { V2HttpError } from '@/api/clientV2'
-import { applyEvent, terminal, type AgentEvent, type AgentRun } from './model'
+import { applyEvent, streamFinished, type AgentEvent, type AgentRun } from './model'
 
 /** 网络状态与运行状态分开维护；EOF 不代表运行完成。 */
 export type ConnectionState = 'connected' | 'reconnecting' | 'failed' | 'closed'
@@ -71,12 +71,12 @@ export class RunSubscription {
           const event = parseFrame(block)
           if (!event) continue
           if (applyEvent(this.run, event) === 'gap') throw new Error('SSE_GAP')
-          if (terminal(this.run.status)) { this.flush(); return }
+          if (streamFinished(this.run)) { this.flush(); return }
           this.batchTimer ??= setTimeout(() => this.flush(), 50)
         }
       }
       this.flush()
-      if (!terminal(this.run.status)) throw new Error('流连接断开')
+      if (!streamFinished(this.run)) throw new Error('流连接断开')
     } finally {
       clearTimeout(idle); controller.abort(); await reader?.cancel().catch(() => undefined)
       this.lifetime.signal.removeEventListener('abort', abort)
@@ -87,10 +87,10 @@ export class RunSubscription {
   async start(): Promise<void> {
     let attempts = 0
     let snapshot = false
-    while (!this.lifetime.signal.aborted && !terminal(this.run.status)) {
+    while (!this.lifetime.signal.aborted && !streamFinished(this.run)) {
       try {
         if (snapshot) { this.run = await agentChatApi.run(this.run.instance_id, this.run.run_id, this.lifetime.signal); this.flush(); snapshot = false }
-        if (terminal(this.run.status)) break
+        if (streamFinished(this.run)) break
         await this.read()
         attempts = 0
       } catch (error) {

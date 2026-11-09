@@ -17,6 +17,18 @@ function response(events: AgentEvent[]): Response {
 afterEach(() => { vi.useRealTimers(); vi.resetAllMocks() })
 
 describe('Agent factual events and recovery', () => {
+  it('生成终态后继续消费保存事件，保存成功才结束订阅', async () => {
+    vi.mocked(agentChatApi.events).mockResolvedValue(response([
+      event(1, 'run.completed', { status: 'completed' }),
+      event(2, 'run.persistence', { persistence_status: 'saving' }),
+      event(3, 'run.persistence', { persistence_status: 'saved' })
+    ]))
+    const update = vi.fn(); const connection = vi.fn()
+    const sub = new RunSubscription({ ...run(), persistence_status: 'pending' }, { update, connection, gone: vi.fn() })
+    await sub.start()
+    expect(update.mock.lastCall?.[0]).toMatchObject({ status: 'completed', persistence_status: 'saved', event_seq: 3 })
+    expect(connection).toHaveBeenLastCalledWith('closed'); sub.close()
+  })
   it('isolates run identities, deduplicates contiguous frames and refuses gaps', () => {
     const state = run(); const delta = event(1, 'answer.delta', { text: '答' })
     expect(applyEvent(state, delta)).toBe('applied'); expect(applyEvent(state, delta)).toBe('duplicate')

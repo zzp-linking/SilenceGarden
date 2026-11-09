@@ -17,7 +17,9 @@ export interface ModelConfig {
 /** 完整可编辑字段；api_key 缺省时保留既有加密值。 */
 export type ModelInput = Pick<ModelConfig, 'name' | 'provider' | 'model' | 'thinking_enabled' | 'max_output_tokens' | 'context_budget_tokens'> & { api_key?: string; revision: number }
 /** 真实运行状态枚举，网络连接状态独立保存。 */
-export type RunStatus = 'running' | 'stopping' | 'completed' | 'stopped' | 'failed' | 'incomplete'
+export type RunStatus = 'created' | 'running' | 'stopping' | 'completed' | 'stopped' | 'failed' | 'incomplete' | 'interrupted'
+/** 生成终态不等于已保存，保存失败仍禁止同会话新发送。 */
+export type PersistenceStatus = 'pending' | 'saving' | 'failed' | 'saved'
 /** 服务端维护的有序消息。 */
 export interface AgentMessage {
   message_id: string // 稳定的消息标识。
@@ -31,6 +33,9 @@ export interface AgentMessage {
 }
 /** 临时会话快照或摘要，摘要不包含消息。 */
 export interface AgentChat {
+  thinking_preference?: boolean // 下次发送偏好，与旧消息思考展示无关。
+  next_cursor?: number // 更早消息的before_seq，缺省表示无更早页。
+  watermark?: number // 本次消息页水位。
   chat_id: string // UUIDv7 格式的唯一标识。
   title: string // 用户可见的会话标题。
   revision: number // 重命名时使用的期望修订号。
@@ -40,6 +45,13 @@ export interface AgentChat {
 }
 /** 原子运行快照；event_seq 精确对应当前累计内容。 */
 export interface AgentRun {
+  generation_status?: RunStatus // 与status兼容的显式生成维度。
+  persistence_status?: PersistenceStatus // 与生成状态独立。
+  source?: 'memory' | 'history' // PG快照以已提交事实为准。
+  replay_available?: boolean // 历史快照不尝试旧事件环。
+  thinking_requested?: boolean // 固定用户选择。
+  thinking_effective?: boolean // 本轮真实模式。
+  activity?: string // 正在加载、缩减或摘要。
   run_id: string // 当前流的标识。
   chat_id: string // 所属父资源标识。
   instance_id: string // 进程世代标识。
@@ -61,14 +73,15 @@ export interface AgentEvent {
   run_id: string // 绑定的事件流。
   seq: number // 单运行内严格递增。
   type: string // 稳定事件名称。
-  payload: { text?: string; status?: RunStatus; reason?: string; usage?: Record<string, unknown> } // 可安全返回的事件数据。
+  payload: { text?: string; status?: RunStatus; reason?: string; usage?: Record<string, unknown>; persistence_status?: PersistenceStatus; activity?: string } // 可安全返回的事件数据。
 }
 /** 用户启动信息不包含管理员专属配置详情。 */
 export interface AgentBootstrap {
+  persistent_history?: boolean // 重启后保留会话身份，连接按新世代重建。
   instance_id: string // 进程世代标识。
   available: boolean // 功能、启用配置及密钥均可用时为真。
-  model?: { model: string; thinking_enabled: boolean } // 公开的当前启用模型摘要。
-  limits: { max_input_bytes: number; user_concurrency: number; user_max_chats: number; max_messages: number } // 界面提示限额，最终以服务端校验为准。
+  model?: { model: string; thinking_enabled: boolean; thinking_allowed?: boolean } // 后台许可，不表示用户已开启。
+  limits: { max_input_bytes: number; user_concurrency: number; user_max_chats?: number; max_messages?: number } // 旧临时模式字段可缺省，不限制持久历史总量。
 }
 /** 已保存配置的手动探测结果，不包含供应商输出正文或密钥。 */
 export interface ModelTestResult {
@@ -79,7 +92,11 @@ export interface ModelTestResult {
   reason: string // 可安全展示的结果说明。
 }
 /** 仅在执行器实际退出后为真。 */
-export function terminal(status: RunStatus): boolean { return ['completed', 'stopped', 'failed', 'incomplete'].includes(status) }
+export function terminal(status: RunStatus): boolean { return ['completed', 'stopped', 'failed', 'incomplete', 'interrupted'].includes(status) }
+/** 保存pending/saving时继续订阅；failed关闭连接并提供显式重试。 */
+export function streamFinished(run: AgentRun): boolean { return terminal(run.status) && (!run.persistence_status || run.persistence_status === 'saved' || run.persistence_status === 'failed') }
+/** 保存失败仍busy，不能用生成终态提前解锁。 */
+export function busy(run: AgentRun): boolean { return !terminal(run.status) || !!run.persistence_status && run.persistence_status !== 'saved' }
 
 /** 仅应用连续帧；快照替换由订阅所有者负责。 */
 export function applyEvent(run: AgentRun, event: AgentEvent): 'applied' | 'duplicate' | 'gap' {
@@ -88,7 +105,9 @@ export function applyEvent(run: AgentRun, event: AgentEvent): 'applied' | 'dupli
   if (event.seq !== run.event_seq + 1) return 'gap'
   if (event.type === 'answer.delta') run.answer += event.payload.text ?? ''
   if (event.type === 'reasoning.delta') run.reasoning += event.payload.text ?? ''
-  if (event.payload.status) run.status = event.payload.status
+  if (event.payload.status) { run.status = event.payload.status; run.generation_status = event.payload.status }
+  if (event.payload.persistence_status) run.persistence_status = event.payload.persistence_status
+  if (event.payload.activity !== undefined) run.activity = event.payload.activity
   if (event.payload.reason) run.reason = event.payload.reason
   if (event.type === 'usage.final') run.usage = event.payload.usage
   run.event_seq = event.seq

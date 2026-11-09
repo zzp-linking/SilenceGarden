@@ -48,7 +48,7 @@ async function save(): Promise<void> {
       <a-form-item label="配置名称" name="name"><a-input v-model:value="form.name" :maxlength="120" /></a-form-item>
       <a-form-item label="厂商与官方地址"><a-input value="DeepSeek · https://api.deepseek.com/" readonly /></a-form-item>
       <a-form-item label="模型名称" name="model" extra="按账户当前可用模型填写；保存后可执行真实生成测试。"><a-input v-model:value="form.model" :maxlength="128" /></a-form-item>
-      <a-form-item label="深度思考"><a-switch v-model:checked="form.thinking_enabled" checked-children="开启" un-checked-children="关闭" /></a-form-item>
+      <a-form-item label="允许深度思考"><a-switch v-model:checked="form.thinking_enabled" checked-children="允许" un-checked-children="禁止" /></a-form-item>
       <a-form-item v-if="config" label="密钥处理"><a-radio-group v-model:value="replaceKey"><a-radio :value="false">保留原密钥</a-radio><a-radio :value="true">替换密钥</a-radio></a-radio-group></a-form-item>
       <a-form-item v-if="requireKey" label="新的 API Key" required extra="仅用于本次保存，不回填已保存内容。"><a-input-password v-model:value="key" autocomplete="new-password" :maxlength="4096" /></a-form-item>
       <details class="advanced"><summary>高级预算设置</summary><a-form-item label="单次输出预算"><a-input-number v-model:value="form.max_output_tokens" :min="1" :max="32768" :precision="0" /></a-form-item><a-form-item label="完整请求项目预算" extra="包含历史、当前输入、输出预留和安全余量；这是项目预算。"><a-input-number v-model:value="form.context_budget_tokens" :min="form.max_output_tokens + 1024" :max="131072" :precision="0" /></a-form-item></details>
