@@ -20,8 +20,44 @@ export type ModelInput = Pick<ModelConfig, 'name' | 'provider' | 'model' | 'thin
 export type RunStatus = 'created' | 'running' | 'stopping' | 'completed' | 'stopped' | 'failed' | 'incomplete' | 'interrupted'
 /** 生成终态不等于已保存，保存失败仍禁止同会话新发送。 */
 export type PersistenceStatus = 'pending' | 'saving' | 'failed' | 'saved'
+/** 可信引用由检索结果生成，文件路径和模型提供的 URL 不进入投影。 */
+export interface AgentSource {
+  kind?: 'web_search' | 'web_fetch' // 缺省为知识库引用。
+  url?: string // 仅网页来源有经过服务端验证的地址。
+  knowledge_base_id?: string // 来源所属知识库，兼容此前保存的引用。
+  id: string // 运行内引用标识。
+  title: string // 来源标题。
+  document_id: string // 原文文档标识。
+  chunk_id: string // 命中片段标识。
+  index_version_id: string // 来源索引版本。
+  heading?: string[] // 可选章节路径。
+  page?: number // 可选原文起始页。
+}
+/** 对话附件只暴露下载标识和展示信息。 */
+export interface AgentArtifact {
+  asset_id: string // 同源授权下载标识。
+  name: string // 用户可见文件名。
+  media_type: string // 已验证的文件类型。
+  byte_size: number // 实际文件字节数。
+  expires_at: string // 下载失效时间。
+}
+/** 固定的计划动作类别及状态，步骤不携带模型生成的文案。 */
+export const planKinds = ['knowledge', 'history', 'search', 'read', 'download', 'export', 'answer'] as const
+export const planStatuses = ['pending', 'running', 'completed', 'failed', 'skipped', 'interrupted'] as const
+/** 计划只展示有序步骤和已确认版本。 */
+export interface AgentPlan {
+  plan_version: number // 运行内单调递增的版本。
+  steps: {
+    step_id: number // 从 1 起连续编号。
+    kind: typeof planKinds[number] // 固定业务动作。
+    status: typeof planStatuses[number] // 真实调用或终态推导出的进度。
+  }[]
+}
 /** 服务端维护的有序消息。 */
 export interface AgentMessage {
+  plan?: AgentPlan // 此回答已提交的终态计划。
+  sources?: AgentSource[] // 关联到此回答的已校验来源。
+  artifacts?: AgentArtifact[] // 此回答产生的已确认附件。
   message_id: string // 稳定的消息标识。
   message_seq: number // 会话内消息顺序。
   role: 'user' | 'assistant' // 由服务端控制的消息角色。
@@ -45,13 +81,18 @@ export interface AgentChat {
 }
 /** 原子运行快照；event_seq 精确对应当前累计内容。 */
 export interface AgentRun {
+  plan?: AgentPlan // 当前运行已提交的最新计划。
   generation_status?: RunStatus // 与status兼容的显式生成维度。
   persistence_status?: PersistenceStatus // 与生成状态独立。
   source?: 'memory' | 'history' // PG快照以已提交事实为准。
   replay_available?: boolean // 历史快照不尝试旧事件环。
   thinking_requested?: boolean // 固定用户选择。
   thinking_effective?: boolean // 本轮真实模式。
-  activity?: string // 正在加载、缩减或摘要。
+  activity?: string // 由实际执行流程产生的当前动作。
+  tool_name?: string // 正在执行的工具名，仅用于固定标签映射。
+  tool_notice?: string // 当前模型或依赖导致的工具可用性提示。
+  sources?: AgentSource[] // 终态来源投影，与历史快照一致。
+  artifacts?: AgentArtifact[] // 可从已提交日志恢复的附件。
   run_id: string // 当前流的标识。
   chat_id: string // 所属父资源标识。
   instance_id: string // 进程世代标识。
@@ -73,7 +114,19 @@ export interface AgentEvent {
   run_id: string // 绑定的事件流。
   seq: number // 单运行内严格递增。
   type: string // 稳定事件名称。
-  payload: { text?: string; status?: RunStatus; reason?: string; usage?: Record<string, unknown>; persistence_status?: PersistenceStatus; activity?: string } // 可安全返回的事件数据。
+  payload: {
+    text?: string // 流式正文增量。
+    status?: RunStatus // 已确认生成状态。
+    reason?: string // 安全的结束说明。
+    usage?: Record<string, unknown> // 供应商已报告用量。
+    persistence_status?: PersistenceStatus // 历史保存状态。
+    activity?: string // 只读的当前动作。
+    tool_name?: string // 本次实际启动的工具。
+    sources?: AgentSource[] // 终态已确认来源。
+    artifacts?: AgentArtifact[] // 终态已确认附件。
+    plan_version?: number // run.plan 当前提交版本。
+    steps?: AgentPlan['steps'] // run.plan 当前提交步骤。
+  }
 }
 /** 用户启动信息不包含管理员专属配置详情。 */
 export interface AgentBootstrap {
@@ -104,12 +157,71 @@ export function applyEvent(run: AgentRun, event: AgentEvent): 'applied' | 'dupli
   if (event.seq <= run.event_seq) return 'duplicate'
   if (event.seq !== run.event_seq + 1) return 'gap'
   if (event.type === 'answer.delta') run.answer += event.payload.text ?? ''
+  if (event.type === 'answer.reset') run.answer = '' // 模型本轮转入工具调用，撤回临时正文。
   if (event.type === 'reasoning.delta') run.reasoning += event.payload.text ?? ''
   if (event.payload.status) { run.status = event.payload.status; run.generation_status = event.payload.status }
   if (event.payload.persistence_status) run.persistence_status = event.payload.persistence_status
-  if (event.payload.activity !== undefined) run.activity = event.payload.activity
+  if (event.type === 'run.activity') {
+    run.activity = event.payload.activity
+    run.tool_name = event.payload.tool_name
+  }
+  if (event.payload.sources) run.sources = event.payload.sources
+  if (event.payload.artifacts) run.artifacts = event.payload.artifacts
+  if (event.type === 'run.plan') {
+    const next = { plan_version: event.payload.plan_version, steps: event.payload.steps }
+    if (isAgentPlan(next) && next.plan_version > (run.plan?.plan_version ?? 0)) run.plan = next
+  }
+  if (terminal(run.status)) {
+    run.activity = undefined
+    run.tool_name = undefined
+  }
   if (event.payload.reason) run.reason = event.payload.reason
   if (event.type === 'usage.final') run.usage = event.payload.usage
   run.event_seq = event.seq
   return 'applied'
+}
+
+/** 检查网络计划的版本、步数、顺序及枚举，拒绝超出约定的展示数据。 */
+export function isAgentPlan(value: unknown): value is AgentPlan {
+  if (!value || typeof value !== 'object') return false
+  const plan = value as Record<string, unknown>
+  return typeof plan.plan_version === 'number' && Number.isSafeInteger(plan.plan_version) && plan.plan_version > 0 &&
+    Array.isArray(plan.steps) && plan.steps.length >= 2 && plan.steps.length <= 6 && plan.steps.every((raw, index) => {
+      if (!raw || typeof raw !== 'object') return false
+      const step = raw as Record<string, unknown>
+      return step.step_id === index + 1 && planKinds.some(kind => kind === step.kind) &&
+        planStatuses.some(status => status === step.status)
+    })
+}
+
+/** source 来自网络事件，先核对公开结构再交给界面。 */
+export function isAgentSource(source: unknown): source is AgentSource {
+  if (!source || typeof source !== 'object') return false
+  const item = source as Record<string, unknown>
+  return typeof item.id === 'string' && /^s[1-9]\d*$/.test(item.id) &&
+    [item.title, item.document_id, item.chunk_id, item.index_version_id].every(v => typeof v === 'string') &&
+    (item.knowledge_base_id === undefined || typeof item.knowledge_base_id === 'string') &&
+    (item.heading === undefined || Array.isArray(item.heading) && item.heading.every(v => typeof v === 'string')) &&
+    (item.page === undefined || typeof item.page === 'number' && Number.isSafeInteger(item.page) && item.page > 0) &&
+    (item.kind === undefined ? item.url === undefined :
+      (item.kind === 'web_search' || item.kind === 'web_fetch') && !!safeWebSourceURL(item.url))
+}
+
+/** url 来自引用投影，链接出口再次检查协议和用户信息。 */
+export function safeWebSourceURL(url: unknown): string | undefined {
+  if (typeof url !== 'string' || url.length > 2048) return
+  try {
+    const parsed = new URL(url)
+    if (['http:', 'https:'].includes(parsed.protocol) && !parsed.username && !parsed.password) return parsed.href
+  } catch { /* 无效地址只显示标题。 */ }
+}
+
+/** attachment 来自终态事件或历史，检查同源下载需要的标识和元数据。 */
+export function isAgentArtifact(attachment: unknown): attachment is AgentArtifact {
+  if (!attachment || typeof attachment !== 'object') return false
+  const item = attachment as Record<string, unknown>
+  return typeof item.asset_id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(item.asset_id) &&
+    typeof item.name === 'string' && item.name.length > 0 && typeof item.media_type === 'string' &&
+    typeof item.byte_size === 'number' && Number.isSafeInteger(item.byte_size) && item.byte_size > 0 && item.byte_size <= 10 * 1024 * 1024 &&
+    typeof item.expires_at === 'string' && Number.isFinite(Date.parse(item.expires_at))
 }

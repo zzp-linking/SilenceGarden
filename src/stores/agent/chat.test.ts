@@ -105,6 +105,28 @@ async function liveWorkspace() {
 }
 
 describe('进程重启恢复', () => {
+  it('已提交历史引用优先于保存后迟到的内存运行投影', async () => {
+    const { store, run, observer } = await liveWorkspace()
+    const stale: AgentRun = { ...run, status: 'failed', persistence_status: 'saved', event_seq: 9, sources: undefined }
+    observer.update(stale)
+    const source = { id: 's1', title: '数据库恢复的来源', document_id: 'd1', chunk_id: 'c1', index_version_id: 'v1' }
+    const committed: AgentMessage = {
+      message_id: run.message_id, message_seq: 6, role: 'assistant', text: '已提交的事实', reasoning: '',
+      run_id: run.run_id, status: 'failed', sources: [source]
+    }
+    vi.mocked(agentChatApi.get).mockResolvedValueOnce({
+      ...store.chats.c1, revision: 3, watermark: 6, current_run_id: undefined,
+      messages: [...store.current.messages!.filter(message => message.message_id !== run.message_id), committed]
+    })
+    await store.select('c1')
+    expect(store.current.messages?.find(message => message.message_id === run.message_id)).toMatchObject({
+      message_seq: 6, text: '已提交的事实', sources: [source]
+    })
+    observer.update({ ...stale, event_seq: 10 })
+    expect(store.current.messages?.find(message => message.message_id === run.message_id)?.sources).toEqual([source])
+    store.dispose()
+  })
+
   it('新世代撤销所有旧消息页，只从PG恢复已保存内容并忽略迟到旧流', async () => {
     const { store, run, observer } = await liveWorkspace()
     observer.update({ ...run, status: 'completed', persistence_status: 'failed', answer: '未保存的回答', event_seq: 10 })

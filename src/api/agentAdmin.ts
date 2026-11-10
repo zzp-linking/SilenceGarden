@@ -156,8 +156,9 @@ export class AgentAdminApi {
   /**
    * bases 读取知识库的稳定游标分页。
    * @param query 分页及元数据过滤条件；省略时使用服务端默认值。
+   * @param signal 关闭范围编辑或离开页面时取消只读请求。
    */
-  bases(query?: KnowledgeQuery) { return this.checked(`/knowledge-bases${queryString(query)}`, pageGuard(isBase)) }
+  bases(query?: KnowledgeQuery, signal?: AbortSignal) { return this.checked(`/knowledge-bases${queryString(query)}`, pageGuard(isBase), { signal }) }
   /**
    * base 读取一个可用知识库的最新元数据。
    * @param id 知识库 UUIDv7。

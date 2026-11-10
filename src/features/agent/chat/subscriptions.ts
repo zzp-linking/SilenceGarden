@@ -1,6 +1,6 @@
 import { agentChatApi } from '@/api/agentChat'
 import { V2HttpError } from '@/api/clientV2'
-import { applyEvent, streamFinished, type AgentEvent, type AgentRun } from './model'
+import { applyEvent, isAgentArtifact, isAgentPlan, isAgentSource, streamFinished, type AgentEvent, type AgentRun } from './model'
 
 /** 网络状态与运行状态分开维护；EOF 不代表运行完成。 */
 export type ConnectionState = 'connected' | 'reconnecting' | 'failed' | 'closed'
@@ -18,6 +18,14 @@ function parseFrame(block: string): AgentEvent | null {
   const e = JSON.parse(data) as Partial<AgentEvent>
   if (e.v !== 1 || !Number.isSafeInteger(e.seq) || (e.seq ?? 0) < 1 || typeof e.run_id !== 'string' || typeof e.chat_id !== 'string' || typeof e.instance_id !== 'string' || typeof e.type !== 'string' || !e.payload || typeof e.payload !== 'object') throw new Error('运行事件格式不正确')
   if (e.payload.text !== undefined && typeof e.payload.text !== 'string') throw new Error('增量格式不正确')
+  if (e.type === 'run.activity' && (typeof e.payload.activity !== 'string' ||
+    e.payload.tool_name !== undefined && typeof e.payload.tool_name !== 'string')) throw new Error('活动事件格式不正确')
+  // 新运行由服务端限制来源数量。旧运行的回放仍按帧字节上限和逐项结构校验。
+  if (e.payload.sources !== undefined && (!Array.isArray(e.payload.sources) ||
+    !e.payload.sources.every(isAgentSource))) throw new Error('引用事件格式不正确')
+  if (e.payload.artifacts !== undefined && (!Array.isArray(e.payload.artifacts) ||
+    e.payload.artifacts.length > 3 || !e.payload.artifacts.every(isAgentArtifact))) throw new Error('附件事件格式不正确')
+  if (e.type === 'run.plan' && !isAgentPlan(e.payload)) throw new Error('运行计划格式不正确')
   return e as AgentEvent
 }
 
@@ -70,9 +78,16 @@ export class RunSubscription {
         for (const block of blocks) {
           const event = parseFrame(block)
           if (!event) continue
-          if (applyEvent(this.run, event) === 'gap') throw new Error('SSE_GAP')
+          const result = applyEvent(this.run, event)
+          if (result === 'gap') throw new Error('SSE_GAP')
+          if (result === 'duplicate') continue
           if (streamFinished(this.run)) { this.flush(); return }
-          this.batchTimer ??= setTimeout(() => this.flush(), 50)
+          // 只合并高频文字增量。工具、计划和终态变化立即同步到工作区。
+          if (event.type === 'answer.delta' || event.type === 'reasoning.delta') {
+            this.batchTimer ??= setTimeout(() => this.flush(), 50)
+          } else {
+            this.flush()
+          }
         }
       }
       this.flush()

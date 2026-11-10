@@ -11,25 +11,41 @@ const screens = Grid.useBreakpoint()
 const mobile = computed(() => screens.value.lg === false)
 const collapsed = shallowRef(false)
 const drawerOpen = shallowRef(false)
+const agentGroup = 'agent-management' // 桌面与移动共用的二级菜单父键。
+const agentNavigation = [
+  { key: '/admin/agent/knowledge-bases', label: '知识库', icon: BookOutlined },
+  { key: '/admin/agent/index-jobs', label: '索引任务', icon: BookOutlined },
+  { key: '/admin/agent/model-configs', label: '模型配置', icon: SettingOutlined },
+  { key: '/admin/agent/tools', label: '工具管理', icon: SettingOutlined },
+  { key: '/agent/chat', label: '智能体对话', icon: AppstoreOutlined }
+]
 const navigation = [
   { key: '/admin', label: '服务总览', icon: AppstoreOutlined },
   { key: '/admin/article-collections', label: '文章合集', icon: BookOutlined },
-  { key: '/admin/agent/knowledge-bases', label: '知识库', icon: BookOutlined },
-  { key: '/admin/agent/index-jobs', label: '索引任务', icon: BookOutlined },
-  // 模型管理入口与普通 AI 设置相互独立。
-  { key: '/admin/agent/model-configs', label: '模型配置', icon: SettingOutlined },
-  { key: '/agent/chat', label: '智能体对话', icon: AppstoreOutlined },
   { key: '/admin/users', label: '用户管理', icon: TeamOutlined },
   { key: '/admin/ai-settings', label: 'AI 设置', icon: SettingOutlined },
   { key: '/admin/ai-runs', label: '失败日志', icon: WarningOutlined },
   { key: '/admin/audit-logs', label: '审计日志', icon: AuditOutlined }
 ]
-const items = navigation.map(item => ({ key: item.key, icon: () => h(item.icon), label: h(RouterLink, { to: item.key }, () => item.label) }))
-// 详情子页继续高亮知识库导航，保持面包屑与侧栏一致。
-const selectedKeys = computed(() => [route.path.startsWith('/admin/agent/knowledge-bases') ? '/admin/agent/knowledge-bases' : route.path.startsWith('/admin/agent/index-jobs') ? '/admin/agent/index-jobs' : route.path.replace(/\/$/, '') || '/admin'])
-const currentTitle = computed(() => navigation.find(item => item.key === selectedKeys.value[0])?.label || '管理后台')
+/** 将一个可导航的菜单条目转换为 Ant Design Vue 菜单项。 */
+function menuLink(item: typeof navigation[number]) {
+  return { key: item.key, icon: () => h(item.icon), label: h(RouterLink, { to: item.key }, () => item.label) }
+}
+const items = [
+  ...navigation.slice(0, 2).map(menuLink),
+  { key: agentGroup, label: '智能体管理', icon: () => h(AppstoreOutlined), children: agentNavigation.map(menuLink) },
+  ...navigation.slice(2).map(menuLink)
+]
+// 以路径段匹配详情页，避免把相似前缀当成同一个菜单项。
+const activeAgentItem = computed(() => agentNavigation.find(({ key }) => route.path === key || route.path.startsWith(key + '/')))
+const selectedKeys = computed(() => [activeAgentItem.value?.key ?? (route.path.replace(/\/$/, '') || '/admin')])
+const currentTitle = computed(() => activeAgentItem.value?.label || navigation.find(item => item.key === selectedKeys.value[0])?.label || '管理后台')
+const openKeys = shallowRef<string[]>([]) // 用户可折叠菜单，进入 Agent 页时恢复展开。
 const adminTheme = { algorithm: theme.defaultAlgorithm, token: { colorPrimary: '#1677ff', colorBgLayout: '#f5f5f5', borderRadius: 6, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif' } }
-watch(() => route.path, () => { drawerOpen.value = false })
+watch(() => route.path, () => {
+  drawerOpen.value = false
+  if (activeAgentItem.value) openKeys.value = [agentGroup]
+}, { immediate: true })
 watch(mobile, () => { drawerOpen.value = false })
 function toggleNavigation() { if (mobile.value) drawerOpen.value = true; else collapsed.value = !collapsed.value }
 </script>
@@ -40,16 +56,16 @@ function toggleNavigation() { if (mobile.value) drawerOpen.value = true; else co
       <a-layout class="admin-shell">
         <a-layout-sider v-if="!mobile" v-model:collapsed="collapsed" :width="224" theme="light" class="admin-sider">
           <RouterLink to="/admin" class="admin-brand" aria-label="静语管理首页"><a-avatar shape="square" :size="32" class="admin-logo"><AppstoreOutlined /></a-avatar><strong v-if="!collapsed">静语管理</strong></RouterLink>
-          <a-menu aria-label="管理导航" mode="inline" :selected-keys="selectedKeys" :items="items" />
+          <a-menu v-model:open-keys="openKeys" aria-label="管理导航" mode="inline" :selected-keys="selectedKeys" :items="items" />
         </a-layout-sider>
         <a-drawer v-if="mobile" v-model:open="drawerOpen" title="静语管理" placement="left" :width="264" :body-style="{ padding: '12px 0' }">
-          <a-menu aria-label="管理导航" mode="inline" :selected-keys="selectedKeys" :items="items" />
+          <a-menu v-model:open-keys="openKeys" aria-label="管理导航" mode="inline" :selected-keys="selectedKeys" :items="items" />
         </a-drawer>
         <a-layout class="admin-workspace">
           <a-layout-header class="admin-header">
             <a-space :size="16">
               <a-button type="text" :aria-label="mobile ? '打开菜单' : collapsed ? '展开菜单' : '收起菜单'" @click="toggleNavigation"><MenuUnfoldOutlined v-if="collapsed || mobile" /><MenuFoldOutlined v-else /></a-button>
-              <a-breadcrumb><a-breadcrumb-item>管理后台</a-breadcrumb-item><a-breadcrumb-item>{{ currentTitle }}</a-breadcrumb-item></a-breadcrumb>
+              <a-breadcrumb><a-breadcrumb-item>管理后台</a-breadcrumb-item><a-breadcrumb-item v-if="activeAgentItem">智能体管理</a-breadcrumb-item><a-breadcrumb-item>{{ currentTitle }}</a-breadcrumb-item></a-breadcrumb>
             </a-space>
             <a-space :size="16">
               <RouterLink to="/ai" class="admin-return" aria-label="返回静语"><ArrowLeftOutlined /><span class="admin-return-label">返回静语</span></RouterLink>

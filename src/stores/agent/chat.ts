@@ -1,9 +1,9 @@
-import { computed, reactive, shallowRef, watch } from 'vue'
+import { computed, reactive, shallowRef, toRaw, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { agentChatApi } from '@/api/agentChat'
 import { V2HttpError } from '@/api/clientV2'
 import { useUserStore } from '@/stores/user'
-import { terminal, busy, streamFinished, type AgentBootstrap, type AgentChat, type AgentRun } from '@/features/agent/chat/model'
+import { terminal, busy, streamFinished, type AgentBootstrap, type AgentChat, type AgentMessage, type AgentRun } from '@/features/agent/chat/model'
 import { RunSubscription, type ConnectionState } from '@/features/agent/chat/subscriptions'
 import { extendHistoryCoverage, type HistoryCoverageRange } from '@/features/agent/chat/historyCoverage'
 
@@ -14,7 +14,7 @@ export const useAgentChatStore = defineStore('agent-chat', () => {
   const runs = reactive<Record<string, AgentRun>>({}) // 按运行标识保存状态，不依赖当前选中项。
   const drafts = reactive<Record<string, string>>({}) // 每个会话的未发送文本，仅保存在内存。
   const connections = reactive<Record<string, ConnectionState>>({}) // 网络状态与真实运行状态分别维护。
-  const pending = reactive<Record<string, { key: string; text: string; thinking: boolean }>>({}) // 保留原文本、模式和幂等键。
+  const pending = reactive<Record<string, { key: string; text: string; thinking: boolean; download: boolean; exportFile: boolean }>>({}) // 保留原文本、模式、两类附件授权和幂等键。
   const sending = reactive<Record<string, boolean>>({}) // 防止界面重复点击，最终仍由服务端保证原子性。
   const selected = shallowRef('') // 仅控制视图选择；路由也可保留会话标识。
   const notice = shallowRef('') // 单一且适度播报的状态与错误提示区。
@@ -25,6 +25,7 @@ export const useAgentChatStore = defineStore('agent-chat', () => {
   const deleted = new Set<string>() // 当前账号已删除资源，迟到响应不得复活。
   const subscriptions = new Map<string, RunSubscription>() // 连接归工作区生命周期管理。
   const refreshTickets = new Map<string, number>() // 同会话只接收最近一次快照请求。
+  const committedMessages = new WeakSet<AgentMessage>() // 只标记在服务器历史水位内实际读到的消息。
   const historyRanges = new Map<string, HistoryCoverageRange[]>() // 已查询的历史区间，不以消息序号连续性猜测隐藏消息。
   let epoch = 0 // 账号或工作区变化时使全部旧异步回调失效。
   let lifetime = new AbortController() // 销毁时取消尚未结束的发现和 POST 请求。
@@ -57,16 +58,20 @@ export const useAgentChatStore = defineStore('agent-chat', () => {
     if (deleted.has(run.chat_id)) return
     if (previous && previous.event_seq > run.event_seq && run.persistence_status !== 'saved') run = previous
     if (previous?.persistence_status === 'saved' && run.persistence_status !== 'saved') run = previous
+    if (previous?.source === 'history' && previous.persistence_status === 'saved' && run.source !== 'history') run = previous
     runs[run.run_id] = run
     const chat = chats[run.chat_id]
-    // 重连可能先拿到PG中断快照，尚未来得及刷新bootstrap；预分配助手ID不代表PG存在回答行。
-    if (chat && run.source === 'history' && run.persistence_status === 'saved' && run.status === 'interrupted' && !run.answer && !run.reasoning) {
-      chat.messages = chat.messages?.filter(message => message.message_id !== run.message_id)
-      const input = chat.messages?.find(message => message.message_id === run.user_message_id)
-      if (input) Object.assign(input, { status: 'interrupted', reason: run.reason })
-    } else {
-      const message = chat?.messages?.find(message => message.message_id === run.message_id)
-      if (message) Object.assign(message, { text: run.answer, reasoning: run.reasoning, status: run.status, reason: run.reason })
+    const message = chat?.messages?.find(message => message.message_id === run.message_id)
+    // 工具结果提交不确定时，历史可恢复比内存更完整的来源。仅覆盖临时助手投影。
+    if (!message || !committedMessages.has(toRaw(message))) {
+      // 预分配助手 ID 不代表 PG 存在回答行。历史中断快照可移除临时占位。
+      if (chat && run.source === 'history' && run.persistence_status === 'saved' && run.status === 'interrupted' && !run.answer && !run.reasoning && !run.sources?.length && !run.artifacts?.length && !run.plan) {
+        chat.messages = chat.messages?.filter(message => message.message_id !== run.message_id)
+        const input = chat.messages?.find(message => message.message_id === run.user_message_id)
+        if (input) Object.assign(input, { status: 'interrupted', reason: run.reason })
+      } else if (message) {
+        Object.assign(message, { text: run.answer, reasoning: run.reasoning, status: run.status, reason: run.reason, sources: run.sources, artifacts: run.artifacts, plan: run.plan })
+      }
     }
     if (chat && syncCurrent) {
       if (!busy(run)) { if (chat.current_run_id === run.run_id) chat.current_run_id = undefined }
@@ -124,10 +129,15 @@ export const useAgentChatStore = defineStore('agent-chat', () => {
     if (generation !== epoch || refreshTickets.get(id) !== ticket || deleted.has(id)) return
     // 接纳和终态会提升会话修订号，旧快照不能删除后续轮次的消息。
     if (chats[id] && chats[id].revision > chat.revision) return
-    // 新快照合并旧页；相同消息采用新页，再叠加运行水位，已加载旧页保持可读。
+    // 最新页也可能附带一条水位之外的临时助手投影。只把实际历史行视为已提交。
     const existing = chats[id]?.messages ?? []
     const merged = new Map(existing.map(m => [m.message_id, m]))
-    for (const m of chat.messages ?? []) merged.set(m.message_id, m)
+    for (const m of chat.messages ?? []) {
+      const committed = chat.watermark !== undefined && m.message_seq <= chat.watermark
+      if (committed) committedMessages.add(toRaw(m))
+      const previous = merged.get(m.message_id)
+      if (committed || !previous || !committedMessages.has(toRaw(previous))) merged.set(m.message_id, m)
+    }
     const watermark = chat.watermark ?? (chat.messages ?? []).reduce((seq, message) => Math.max(seq, message.message_seq), 0)
     const cursor = rememberPage(id, 0, chat.next_cursor, watermark)
     chats[id] = { ...chat, messages: [...merged.values()].sort((a, b) => a.message_seq - b.message_seq), next_cursor: cursor }
@@ -216,15 +226,17 @@ export const useAgentChatStore = defineStore('agent-chat', () => {
     if (selected.value) await refreshChat(selected.value)
   }
   /** 网络或 5xx 结果不确定时保留原请求标识；明确的新输入使用新键。 */
-  async function send(): Promise<void> {
+  async function send(download = false, exportFile = false): Promise<void> {
     const id = selected.value; const text = drafts[id]?.trim()
     if (!bootstrap.value || !text || sending[id] || preferenceSaving[id]) return
     if (pending[id] && pending[id].text !== text) throw new Error('上次发送结果未确认，请先恢复原输入并重试核对')
-    pending[id] ??= { key: crypto.randomUUID(), text, thinking: !!chats[id]?.thinking_preference && !!bootstrap.value.model?.thinking_allowed }; sending[id] = true
+    pending[id] ??= { key: crypto.randomUUID(), text, thinking: !!chats[id]?.thinking_preference && !!bootstrap.value.model?.thinking_allowed, download, exportFile }; sending[id] = true
     const generation = epoch
     try {
       const request = pending[id]
-      const run = await agentChatApi.send(bootstrap.value.instance_id, id, text, request.key, lifetime.signal, request.thinking)
+      const args = [bootstrap.value.instance_id, id, text, request.key, lifetime.signal, request.thinking] as const
+      const grants: [boolean?, boolean?] = request.exportFile ? [request.download, true] : request.download ? [true] : []
+      const run = await agentChatApi.send(...args, ...grants)
       if (generation !== epoch) return
       delete pending[id]; if (drafts[id]?.trim() === text) drafts[id] = ''
       attach(run); await refreshChat(id); notice.value = ''
@@ -245,7 +257,7 @@ export const useAgentChatStore = defineStore('agent-chat', () => {
       if (generation === epoch && !deleted.has(id)) chats[id] = { ...chats[id], ...value }
     } finally { if (generation === epoch) preferenceSaving[id] = false }
   }
-  /** 更早页只插入未知消息，不能覆盖流式助手的较新内容。 */
+  /** 更早页补齐历史和已提交的临时占位，保留已读回的最新历史。 */
   async function older(id: string): Promise<void> {
     const before = chats[id]?.next_cursor
     if (!before || pageLoading[id]) return
@@ -254,7 +266,14 @@ export const useAgentChatStore = defineStore('agent-chat', () => {
       const page = await agentChatApi.messages(id, before, lifetime.signal)
       if (generation !== epoch || deleted.has(id) || !chats[id]) return
       const all = new Map((chats[id].messages ?? []).map(m => [m.message_id, m]))
-      for (const m of page.items) if (!all.has(m.message_id)) all.set(m.message_id, m)
+      for (const m of page.items) {
+        if (m.message_seq >= before || m.message_seq > page.watermark) continue
+        const previous = all.get(m.message_id)
+        if (!previous || !committedMessages.has(toRaw(previous))) {
+          committedMessages.add(toRaw(m))
+          all.set(m.message_id, m)
+        }
+      }
       const cursor = rememberPage(id, before, page.next_cursor, page.watermark)
       chats[id].messages = [...all.values()].sort((a, b) => a.message_seq - b.message_seq); chats[id].next_cursor = cursor
     } finally { if (generation === epoch) pageLoading[id] = false }

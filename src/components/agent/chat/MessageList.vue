@@ -1,10 +1,18 @@
 <script setup lang="ts">
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import MarkdownContent from '@/components/ai/MarkdownContent.vue'
+import MessageResources from './MessageResources.vue'
+import RunPlan from './RunPlan.vue'
 import type { AgentMessage } from '@/features/agent/chat/model'
 
 /** 阅读行为归消息面板管理，独立于传输和当前选中会话。 */
-const props = defineProps<{ messages: AgentMessage[]; chatId: string; hasMore?: boolean; loading?: boolean }>()
+const props = defineProps<{
+  messages: AgentMessage[] // 当前会话的有序可见消息。
+  chatId: string // 用于隔离会话的滚动位置。
+  hasMore?: boolean // 是否还有历史页。
+  loading?: boolean // 是否正在读取历史页。
+  activeMessageId?: string // 当前步骤在工作区顶部展示，历史列表避免重复。
+}>()
 const emit = defineEmits<{ older: [] }>() // 上层负责读取，本组件维护滚动锚点。
 let anchor: { height: number; top: number; chat: string } | undefined // 加载前的阅读位置。
 /** 更早页插入后按新增高度维持当前阅读锚点。 */
@@ -33,6 +41,9 @@ watch(() => props.loading, async value => { if (!value && anchor) { await nextTi
         <p v-if="message.role === 'user'" class="user-text">{{ message.text }}</p>
         <!-- 复用既有渲染器，禁用原始 HTML 并净化 Markdown 和代码输出。 -->
         <MarkdownContent v-else :source="message.text" :max-chars="524288" />
+        <MessageResources v-if="message.sources?.length || message.artifacts?.length"
+          :sources="message.sources" :artifacts="message.artifacts" />
+        <RunPlan v-if="message.plan && message.message_id !== activeMessageId" :plan="message.plan" />
         <p v-if="message.role === 'assistant'" class="message-state">{{ labels[message.status] }}<span v-if="message.reason && message.status !== 'completed'"> · {{ message.reason }}</span></p>
         <p v-else-if="message.status === 'interrupted'" class="message-state">服务重启，本轮未提交的输出不可恢复。</p>
       </article>
