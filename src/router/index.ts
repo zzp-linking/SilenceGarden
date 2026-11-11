@@ -35,6 +35,10 @@ const routes: RouteRecordRaw[] = [
       { path: 'agent/model-configs', name: 'AdminAgentModels', component: () => import('@/views/admin/agent/ModelConfigs.vue') },
       // 工具管理继承后台权限，并与现有智能体管理入口同组。
       { path: 'agent/tools', name: 'AdminAgentTools', component: () => import('@/views/admin/agent/ToolConfigs.vue') },
+      // MCP 独立管理服务连接与逐工具授权，继承后台管理员权限。
+      { path: 'agent/mcp', name: 'AdminAgentMcp', component: () => import('@/views/admin/agent/McpServices.vue') },
+      // 对外服务独立管理 API Key、服务启停和调用日志。
+      { path: 'agent/mcp-server', name: 'AdminAgentMcpServer', component: () => import('@/views/admin/agent/McpServer.vue') },
       // 知识管理复用父级管理员权限；详情页采用独立懒加载组件。
       { path: 'agent/knowledge-bases', name: 'AdminKnowledgeBases', component: () => import('@/views/admin/agent/KnowledgeBases.vue') },
       { path: 'agent/knowledge-bases/:id', name: 'AdminKnowledgeBaseDetail', component: () => import('@/views/admin/agent/KnowledgeBaseDetail.vue') },

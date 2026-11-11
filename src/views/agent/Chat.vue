@@ -19,6 +19,8 @@ const mobile = computed(() => !screens.value.md)
 const drawer = shallowRef(false) // 仅控制窄屏导航展示。
 const allowDownload = shallowRef(false) // 用户对当前发送的单轮附件授权。
 const allowExport = shallowRef(false) // 用户对本轮生成附件的单独授权。
+const allowMcp = shallowRef(false) // 当前输入的外部 MCP 授权，发送或切换会话后复位。
+const mcpToolName = /^mcp_[a-z][a-z0-9_]{0,23}_[0-9a-f]{16}$/ // 只识别后端固定命名空间。
 const currentRun = computed(() => store.current?.current_run_id ? store.runs[store.current.current_run_id] : undefined)
 const network = computed(() => currentRun.value ? store.connections[currentRun.value.run_id] : undefined)
 /** 断线和停止状态优先展示，避免其他运行的旧操作提示遮盖真实状态。 */
@@ -41,6 +43,7 @@ const feedback = computed(() => {
     if (run.tool_name === 'file_download') return '正在下载文件'
     if (run.tool_name === 'pdf_export') return '正在生成 PDF'
     if (run.tool_name === 'text_export') return '正在导出文本文件'
+    if (run.tool_name && mcpToolName.test(run.tool_name)) return '正在调用 MCP 工具'
     return '正在运行工具'
   }
   if (run?.activity === 'model_processing') return '模型正在处理请求'
@@ -66,15 +69,18 @@ function submit(): void {
   if (!canSend.value) return
   const download = allowDownload.value
   const exportFile = allowExport.value
+  const mcp = allowMcp.value
   allowDownload.value = false
   allowExport.value = false
-  void act(() => store.send(download, exportFile))
+  allowMcp.value = false
+  void act(() => store.send(download, exportFile, mcp))
 }
 /** Ctrl/Cmd+Enter 发送消息，普通 Enter 仍用于多行输入。 */
 function keyboard(event: KeyboardEvent): void { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.isComposing && canSend.value) { event.preventDefault(); submit() } }
 watch(() => store.selected, id => {
   allowDownload.value = false
   allowExport.value = false
+  allowMcp.value = false
   void router.replace({ query: id ? { chat: id } : {} })
 })
 onMounted(() => { void act(() => store.restore(typeof route.query.chat === 'string' ? route.query.chat : '')); window.addEventListener('focus', focus) })
@@ -98,7 +104,12 @@ onBeforeUnmount(() => { window.removeEventListener('focus', focus); store.dispos
         <div class="thinking-mode"><a-checkbox v-model:checked="allowDownload"
           :disabled="!!currentRun || !!store.pending[store.selected] || !!store.sending[store.selected]">允许本轮下载文件</a-checkbox>
           <a-checkbox v-model:checked="allowExport"
-            :disabled="!!currentRun || !!store.pending[store.selected] || !!store.sending[store.selected]">允许本轮导出文件</a-checkbox></div>
+            :disabled="!!currentRun || !!store.pending[store.selected] || !!store.sending[store.selected]">允许本轮导出文件</a-checkbox>
+          <a-checkbox :checked="store.pending[store.selected]?.mcp ?? allowMcp" aria-describedby="agent-mcp-help"
+            :disabled="!!currentRun || !!store.pending[store.selected] || !!store.sending[store.selected]"
+            @update:checked="(value: boolean) => allowMcp = value">允许使用 MCP 工具</a-checkbox>
+          <span v-show="store.pending[store.selected]?.mcp ?? allowMcp" id="agent-mcp-help">本轮所需的工具参数可能发送给外部服务</span>
+        </div>
         <div class="composer-footer"><span :class="{ 'input-over-limit': byteCount > maxInput }">{{ byteCount }} / {{ maxInput }} 字节<span v-if="store.pending[store.selected]"> · 上次发送待核对，重试将复用原模式与请求标识</span></span><a-button v-if="currentRun?.persistence_status === 'failed'" @click="act(() => store.save(currentRun!.run_id))">重试保存</a-button><a-button v-else-if="currentRun && !terminal(currentRun.status)" :loading="currentRun.status === 'stopping'" @click="act(() => store.stop(currentRun!.run_id))">停止生成</a-button><a-button v-else html-type="submit" type="primary" :disabled="!canSend" :loading="store.sending[store.selected]">{{ store.pending[store.selected] ? '重试并核对' : '发送' }}</a-button></div>
       </form>
     </main>

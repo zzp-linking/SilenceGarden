@@ -53,6 +53,28 @@ describe('Agent account-scoped workspace', () => {
     await store.remove('c1'); slow.resolve({ chat_id: 'c1', title: '旧响应', revision: 99, updated_at: '' }); await refresh
     expect(store.chats.c1).toBeUndefined(); store.dispose()
   })
+  it('MCP 授权随原幂等键重试，下一次发送默认关闭', async () => {
+    const store = workspace()
+    vi.mocked(agentChatApi.send).mockRejectedValueOnce(new TypeError('offline'))
+    await expect(store.send(false, false, true)).rejects.toThrow('offline')
+    const key = store.pending.c1.key // 记录首次开启 MCP 时的接纳键。
+    expect(store.pending.c1.mcp).toBe(true)
+
+    const accepted = { run_id: 'mcp', chat_id: 'c1', instance_id: 'i1', message_id: 'a1',
+      user_message_id: 'u1', status: 'completed', persistence_status: 'saved', answer: '已完成',
+      reasoning: '', event_seq: 1, model: {} } as AgentRun
+    vi.mocked(agentChatApi.send).mockResolvedValueOnce(accepted)
+    vi.mocked(agentChatApi.get).mockResolvedValue(store.chats.c1)
+    await store.send()
+    expect(agentChatApi.send).toHaveBeenLastCalledWith('i1', 'c1', 'hello', key, expect.any(AbortSignal), false, false, false, true)
+    expect(store.pending.c1).toBeUndefined()
+
+    store.drafts.c1 = 'next'
+    vi.mocked(agentChatApi.send).mockResolvedValueOnce({ ...accepted, run_id: 'next', message_id: 'a2' })
+    await store.send()
+    expect(agentChatApi.send).toHaveBeenLastCalledWith('i1', 'c1', 'next', expect.not.stringMatching(key), expect.any(AbortSignal), false)
+    store.dispose()
+  })
   it('keeps the exact idempotency key after uncertain POST and clears draft only on accepted response', async () => {
     const store = workspace()
     vi.mocked(agentChatApi.send).mockRejectedValueOnce(new TypeError('offline'))

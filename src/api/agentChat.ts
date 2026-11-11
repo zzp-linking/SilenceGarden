@@ -11,8 +11,8 @@ export const agentChatApi = {
   get: (instance: string, id: string, signal?: AbortSignal) => clientV2.request<AgentChat>(`/agent/chats/${id}?${query(instance)}`, { signal }),
   rename: (instance: string, chat: AgentChat, title: string, signal?: AbortSignal) => clientV2.request<AgentChat>(`/agent/chats/${chat.chat_id}`, { method: 'PATCH', body: JSON.stringify({ instance_id: instance, revision: chat.revision, title }), signal }),
   remove: (instance: string, id: string, signal?: AbortSignal) => clientV2.request<AgentChat>(`/agent/chats/${id}?${query(instance)}`, { method: 'DELETE', signal }),
-  /** download 与 exportFile 分别表示用户明确授予的单轮下载与导出权限。 */
-  send: (instance: string, id: string, text: string, key: string, signal?: AbortSignal, thinking = false, download = false, exportFile = false) => clientV2.request<AgentRun>(`/agent/chats/${id}/runs`, { method: 'POST', body: JSON.stringify({ instance_id: instance, text, client_request_id: key, thinking_requested: thinking, allow_file_download: download || undefined, allow_file_export: exportFile || undefined }), signal }),
+  /** download、exportFile 与 mcp 分别表示用户对单轮下载、导出和外部工具的授权。 */
+  send: (instance: string, id: string, text: string, key: string, signal?: AbortSignal, thinking = false, download = false, exportFile = false, mcp = false) => clientV2.request<AgentRun>(`/agent/chats/${id}/runs`, { method: 'POST', body: JSON.stringify({ instance_id: instance, text, client_request_id: key, thinking_requested: thinking, allow_file_download: download || undefined, allow_file_export: exportFile || undefined, allow_mcp_tools: mcp || undefined }), signal }),
   preference: (chat: AgentChat, thinking: boolean, signal?: AbortSignal) => clientV2.request<AgentChat>(`/agent/chats/${chat.chat_id}`, { method: 'PATCH', body: JSON.stringify({ revision: chat.revision, thinking_preference: thinking }), signal }),
   messages: (id: string, before: number, signal?: AbortSignal) => clientV2.request<{ items: AgentMessage[]; next_cursor?: number; watermark: number }>(`/agent/chats/${id}/messages?before_seq=${before}&limit=40`, { signal }),
   /** 按附件 ID 读取文件，访问 Cookie 过期时沿用会话刷新和一次重试。 */

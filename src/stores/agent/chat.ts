@@ -14,7 +14,7 @@ export const useAgentChatStore = defineStore('agent-chat', () => {
   const runs = reactive<Record<string, AgentRun>>({}) // 按运行标识保存状态，不依赖当前选中项。
   const drafts = reactive<Record<string, string>>({}) // 每个会话的未发送文本，仅保存在内存。
   const connections = reactive<Record<string, ConnectionState>>({}) // 网络状态与真实运行状态分别维护。
-  const pending = reactive<Record<string, { key: string; text: string; thinking: boolean; download: boolean; exportFile: boolean }>>({}) // 保留原文本、模式、两类附件授权和幂等键。
+  const pending = reactive<Record<string, { key: string; text: string; thinking: boolean; download: boolean; exportFile: boolean; mcp: boolean }>>({}) // 保留原文本、模式、附件与 MCP 授权及幂等键。
   const sending = reactive<Record<string, boolean>>({}) // 防止界面重复点击，最终仍由服务端保证原子性。
   const selected = shallowRef('') // 仅控制视图选择；路由也可保留会话标识。
   const notice = shallowRef('') // 单一且适度播报的状态与错误提示区。
@@ -226,16 +226,18 @@ export const useAgentChatStore = defineStore('agent-chat', () => {
     if (selected.value) await refreshChat(selected.value)
   }
   /** 网络或 5xx 结果不确定时保留原请求标识；明确的新输入使用新键。 */
-  async function send(download = false, exportFile = false): Promise<void> {
+  async function send(download = false, exportFile = false, mcp = false): Promise<void> {
     const id = selected.value; const text = drafts[id]?.trim()
     if (!bootstrap.value || !text || sending[id] || preferenceSaving[id]) return
     if (pending[id] && pending[id].text !== text) throw new Error('上次发送结果未确认，请先恢复原输入并重试核对')
-    pending[id] ??= { key: crypto.randomUUID(), text, thinking: !!chats[id]?.thinking_preference && !!bootstrap.value.model?.thinking_allowed, download, exportFile }; sending[id] = true
+    pending[id] ??= { key: crypto.randomUUID(), text, thinking: !!chats[id]?.thinking_preference && !!bootstrap.value.model?.thinking_allowed, download, exportFile, mcp }; sending[id] = true
     const generation = epoch
     try {
       const request = pending[id]
       const args = [bootstrap.value.instance_id, id, text, request.key, lifetime.signal, request.thinking] as const
-      const grants: [boolean?, boolean?] = request.exportFile ? [request.download, true] : request.download ? [true] : []
+      // 只使用首次提交固定的许可，缺省场景保持旧调用形态。
+      const grants: [boolean?, boolean?, boolean?] = request.mcp ? [request.download, request.exportFile, true] :
+        request.exportFile ? [request.download, true] : request.download ? [true] : []
       const run = await agentChatApi.send(...args, ...grants)
       if (generation !== epoch) return
       delete pending[id]; if (drafts[id]?.trim() === text) drafts[id] = ''

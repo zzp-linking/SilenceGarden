@@ -17,6 +17,8 @@ const agentNavigation = [
   { key: '/admin/agent/index-jobs', label: '索引任务', icon: BookOutlined },
   { key: '/admin/agent/model-configs', label: '模型配置', icon: SettingOutlined },
   { key: '/admin/agent/tools', label: '工具管理', icon: SettingOutlined },
+  { key: '/admin/agent/mcp', label: 'MCP 管理', icon: SettingOutlined }, // 外部服务配置与内置工具管理并列。
+  { key: '/admin/agent/mcp-server', label: 'MCP 对外服务', icon: SettingOutlined }, // 面向外部客户端的发钥、授权和调用日志。
   { key: '/agent/chat', label: '智能体对话', icon: AppstoreOutlined }
 ]
 const navigation = [
