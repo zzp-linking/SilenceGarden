@@ -13,3 +13,4 @@ codegraph.json
 !src/stores/agent/**/*.test.ts
 !src/features/agent/**/*.test.ts
 !src/components/agent/**/*.test.ts
+!src/views/agent/Chat.test.ts

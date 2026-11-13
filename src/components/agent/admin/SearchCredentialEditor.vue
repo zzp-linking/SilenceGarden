@@ -23,16 +23,16 @@ async function clear() {
 </script>
 
 <template>
-  <a-card title="网页搜索 · SearchApi">
+  <a-card title="网页搜索 · DeepSeek">
     <a-space direction="vertical" style="width: 100%">
       <a-tag :color="config.credential_available ? 'green' : config.has_api_key ? 'orange' : 'default'">
-        {{ config.credential_available ? '密钥已配置' : config.has_api_key ? '已保存，当前服务无法解密' : '尚未配置密钥' }}
+        {{ config.credential_available ? '密钥已配置' : config.has_api_key ? '已保存的密钥不可用，请重新录入' : '尚未配置密钥' }}
       </a-tag>
       <a-form :model="form" layout="vertical" @finish="replace">
-        <a-form-item label="SearchApi 密钥" name="key" html-for="searchapi-key"
-          extra="在 SearchApi 控制台复制密钥。保存后后台只显示配置状态。">
-          <a-input-password id="searchapi-key" v-model:value="form.key" autocomplete="new-password"
-            :maxlength="512" :disabled="busy" placeholder="输入 SearchApi 密钥" />
+        <a-form-item label="DeepSeek API Key" name="key" html-for="deepseek-search-key"
+          extra="在 DeepSeek 开放平台创建或复制 API Key。保存后后台只显示配置状态。">
+          <a-input-password id="deepseek-search-key" v-model:value="form.key" autocomplete="new-password"
+            :maxlength="512" :disabled="busy" placeholder="输入 DeepSeek API Key" />
         </a-form-item>
         <a-space wrap>
           <a-button type="primary" html-type="submit" :disabled="busy || !form.key.trim()">

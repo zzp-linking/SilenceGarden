@@ -61,8 +61,8 @@ function saveScope(scope: KnowledgeScope) {
 async function saveSearchKey(key: string | null) {
   if (!search.value) return false
   return key === null ?
-    update(search.value, { credential_action: 'clear' }, 'SearchApi 密钥已清除') :
-    update(search.value, { credential_action: 'replace', api_key: key }, 'SearchApi 密钥已保存，可在工具列表开启网页搜索')
+    update(search.value, { credential_action: 'clear' }, 'DeepSeek API Key 已清除') :
+    update(search.value, { credential_action: 'replace', api_key: key }, 'DeepSeek API Key 已保存，可在工具列表开启网页搜索')
 }
 
 /** 根据 policy 的当前修订保存完整 value。 */

@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { agentChatApi } from '@/api/agentChat'
 import { V2HttpError } from '@/api/clientV2'
 import { useUserStore } from '@/stores/user'
-import { terminal, busy, streamFinished, type AgentBootstrap, type AgentChat, type AgentMessage, type AgentRun } from '@/features/agent/chat/model'
+import { busy, streamFinished, type AgentBootstrap, type AgentChat, type AgentMessage, type AgentRun } from '@/features/agent/chat/model'
 import { RunSubscription, type ConnectionState } from '@/features/agent/chat/subscriptions'
 import { extendHistoryCoverage, type HistoryCoverageRange } from '@/features/agent/chat/historyCoverage'
 
@@ -90,7 +90,15 @@ export const useAgentChatStore = defineStore('agent-chat', () => {
         if (generation !== epoch) return
         connections[run.run_id] = state
         if (state === 'closed' || state === 'failed') subscriptions.delete(run.run_id)
-        if (state === 'closed') { if (selected.value === run.chat_id) notice.value = runs[run.run_id]?.status === 'interrupted' ? '服务已重启，本轮未提交输出不可恢复' : runs[run.run_id]?.persistence_status === 'failed' ? '历史保存失败，请重试保存' : '回答已保存'; void refreshChat(run.chat_id).catch(report) }
+        if (state === 'closed') {
+          // 回复卡片已显示生成结果。工作区只提示重启或可能需要处理的保存失败。
+          const finished = runs[run.run_id]
+          if (selected.value === run.chat_id) {
+            if (finished?.status === 'interrupted') notice.value = '服务已重启，本轮未提交输出不可恢复'
+            else notice.value = finished?.persistence_status === 'failed' ? '历史保存失败，请重试保存' : ''
+          }
+          void refreshChat(run.chat_id).catch(report)
+        }
       },
       gone: code => {
         if (generation !== epoch) return
@@ -294,13 +302,24 @@ export const useAgentChatStore = defineStore('agent-chat', () => {
   /** 只重试冻结结果落库，不再调用模型。 */
   async function save(id: string): Promise<void> {
     const generation = epoch; const run = await agentChatApi.save(id, lifetime.signal)
-    if (generation === epoch && !deleted.has(run.chat_id)) { accept(run); await refreshChat(run.chat_id); notice.value = run.persistence_status === 'saved' ? '回答已保存' : '历史保存失败，请稍后重试' }
+    if (generation === epoch && !deleted.has(run.chat_id)) {
+      accept(run)
+      await refreshChat(run.chat_id)
+      // 保存完成后由回复卡片保留终态，工作区只需提示仍未保存的情况。
+      if (generation === epoch && selected.value === run.chat_id) {
+        notice.value = run.persistence_status === 'saved' ? '' : '历史保存失败，请稍后重试'
+      }
+    }
   }
   /** 停止只提交意图；执行器实际退出前，返回的真实快照仍为停止中。 */
   async function stop(id: string): Promise<void> {
     if (!bootstrap.value) return
     const generation = epoch; const run = await agentChatApi.stop(bootstrap.value.instance_id, id, lifetime.signal)
-    if (generation === epoch) { accept(run); notice.value = terminal(run.status) ? '回答已结束' : '' }
+    if (generation === epoch) {
+      accept(run)
+      // 当前回复会显示停止进度及实际终态。
+      if (selected.value === run.chat_id) notice.value = ''
+    }
   }
   /** 显式重试只恢复订阅，不重新生成回答。 */
   async function reconnect(id: string): Promise<void> {

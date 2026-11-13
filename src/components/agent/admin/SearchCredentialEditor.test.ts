@@ -4,7 +4,7 @@ import { antdPlugins, installAntdEnvironment } from '@/testsupport/antd'
 import SearchCredentialEditor from './SearchCredentialEditor.vue'
 
 /** 使用真实 Ant Design 表单验证写入动作、回显边界和保存后清空。 */
-it('SearchApi 密钥只在管理员主动提交时发送', async () => {
+it('DeepSeek API Key 只在管理员主动提交时发送', async () => {
   installAntdEnvironment()
   const config = { name: 'web_search', label: '网页搜索', enabled: false, ready: false, revision: 1 }
   const save = vi.fn(async () => true)
@@ -12,7 +12,11 @@ it('SearchApi 密钥只在管理员主动提交时发送', async () => {
   try {
     const input = wrapper.get<HTMLInputElement>('input[type=password]')
     expect(input.element.value).toBe('')
+    expect(wrapper.text()).toContain('网页搜索 · DeepSeek')
     expect(wrapper.text()).toContain('尚未配置密钥')
+    await wrapper.setProps({ config: { ...config, has_api_key: true, credential_available: false } })
+    expect(wrapper.text()).toContain('已保存的密钥不可用，请重新录入')
+    expect(input.element.value).toBe('')
     await input.setValue('synthetic-admin-key')
     expect(save).not.toHaveBeenCalled()
     await wrapper.get('form').trigger('submit')
